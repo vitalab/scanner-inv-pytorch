@@ -54,16 +54,16 @@ def enc_dec_training_step( encoder, decoder, adv, x, c, center_vox_func, x_subj_
 
     #TODO: projection loss
     #subj_specific_proj_loss
-    center_vox = center_vox_func(x_recon)
+    #center_vox = center_vox_func(x_recon)
     #center_vox = torch.bmm(center_vox, sh_mat) #batch matmul
 
     # should be [B, SUBJ_BVECS, SH_HARMONICS] x [B, SH_HARMONICS, 1]
-    center_vox = torch.matmul(sh_mat,center_vox.unsqueeze(2)).squeeze()
+    #center_vox = torch.matmul(sh_mat,center_vox.unsqueeze(2)).squeeze()
 
     #subj_specific_proj_loss = F.mse_loss(center_vox, x_subj_space_gt)
-    subj_specific_proj_loss = torch.square(
-        sh_weights * (center_vox - x_subj_space_gt)
-    ).mean() #weighted MSE
+    #subj_specific_proj_loss = torch.square(
+    #    sh_weights * (center_vox - x_subj_space_gt)
+    #).mean() #weighted MSE
 
     # 
     # KL[q(z|x) | q(z)]
@@ -83,13 +83,12 @@ def enc_dec_training_step( encoder, decoder, adv, x, c, center_vox_func, x_subj_
 
     loss = loss_weights["recon"] * recon_loss + \
         loss_weights["prior"] * kl_loss + \
-        loss_weights["projection"] * subj_specific_proj_loss + \
         loss_weights["marg"] * marg_loss + \
         ( - loss_weights["adv"] * adv_loss )
 
     #print(loss)
 
-    return loss, (recon_loss,kl_loss, subj_specific_proj_loss, marg_loss, adv_loss)
+    return loss, (recon_loss,kl_loss, -1, marg_loss, adv_loss)
 
 
 def adv_training_step( encoder, decoder, adv, x, c ):

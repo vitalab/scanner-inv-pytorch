@@ -1,7 +1,7 @@
 
 
 import torch
-import loader
+#import loader
 import arch
 import losses
 import numpy as np
@@ -23,7 +23,7 @@ parser.add_argument("--save-path",default=None)
 
 args = parser.parse_args()
 
-PATH_TO_HCP_DATA=args.hcp_zip_path
+#PATH_TO_HCP_DATA=args.hcp_zip_path
 save_path=args.save_path
 
 n_epochs = 10000
@@ -71,12 +71,12 @@ scan_type_map = {
 #    n_per_img=100000
 #)
 
-train_loader = torch.utils.data.DataLoader(
-    train_iterator,
-    batch_size=batch_size,
-    shuffle=True,
-    pin_memory=True
-)
+# train_loader = torch.utils.data.DataLoader(
+#     train_iterator,
+#     batch_size=batch_size,
+#     shuffle=True,
+#     pin_memory=True
+# )
 
 #val_loader = torch.utils.data.DataLoader(
 #    val_iterator,
@@ -92,7 +92,8 @@ train_loader = torch.utils.data.DataLoader(
 #    pin_memory=True
 #)
 
-center_vox_func = train_iterator.get_center_voxel_function()
+#center_vox_func = train_iterator.get_center_voxel_function()
+center_vox_func = None
 
 enc_obj = arch.encoder( 322, 32 )
 dec_obj = arch.decoder( 32, 322, 1 )
@@ -129,19 +130,24 @@ for epoch in range(n_epochs):
     total_marg_loss = 0
     total_adv_loss = 0
 
-    for d_idx,batch in enumerate(train_loader):
+    #for d_idx,batch in enumerate(train_loader):
+    for d_idx in range(10):
         #print(f"batch {d_idx}", flush=True)
 
-        x = batch[0]
-        x_subj_space = batch[1]
-        sh_mat = batch[2]
-        sh_weights = batch[3]
-        c = batch[4]
+        # x = batch[0]
+        # x_subj_space = batch[1]
+        # sh_mat = batch[2]
+        # sh_weights = batch[3]
+        # c = batch[4]
+
+        x = torch.randn(batch_size, 322)
+        c = torch.randint(0, 2, (batch_size, 1))
+        x_subj_space = sh_mat = sh_weights = None
 
         x = x.to(device)
-        x_subj_space = x_subj_space.to(device)
-        sh_mat = sh_mat.to(device)
-        sh_weights = sh_weights.to(device)
+        #x_subj_space = x_subj_space.to(device)
+        #sh_mat = sh_mat.to(device)
+        #sh_weights = sh_weights.to(device)
         c = c.to(device)
 
         if epoch < burnin or d_idx % (n_adv_per_enc+1) > 0:
@@ -168,7 +174,7 @@ for epoch in range(n_epochs):
 
             total_recon_loss += recon_loss.item()*x.size()[0]
             total_kl_loss += kl_loss.item()*x.size()[0]
-            total_proj_loss += proj_loss.item()*x.size()[0]
+            #total_proj_loss += proj_loss.item()*x.size()[0]
             total_marg_loss += marg_loss.item()*x.size()[0]
             total_adv_loss += gen_adv_loss.item()*x.size()[0]
 
@@ -177,7 +183,7 @@ for epoch in range(n_epochs):
             train_loss += loss.item()*x.size()[0]
             n += x.size()[0]
 
-        del x, x_subj_space, sh_mat, sh_weights, c
+        #del x, x_subj_space, sh_mat, sh_weights, c
 
     if save_path is not None and epoch > burnin and epoch % save_freq == 0:
         torch.save(
