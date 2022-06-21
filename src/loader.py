@@ -1,7 +1,7 @@
 
 import numpy as np
 import torch
-import joblib
+#import joblib
 
 
 #
@@ -171,45 +171,66 @@ class example_in_memory_dataset(torch.utils.data.Dataset):
 
 
 def extract_vectors_from_volume(volume, mask):
-    vol_and_mask = np.stack([volume, mask], axis=-1)  # shape: (C, D, H, W, 2)
+    # volume (C, D, H, W)
+    # mask      (D, H, W)
 
-    # window_shape: (C, 3, 3, 3, 2)
-    window_shape = (volume.shape[0], 3, 3, 3, 2)
+    vol_and_mask = np.concatenate([volume, mask[None, ...]], axis=0)  # shape: (C + 1, D, H, W)
+
+    # window_shape: (C+1, 3, 3, 3)
+    window_shape = (volume.shape[0] + 1, 3, 3, 3)
     windows = np.lib.stride_tricks.sliding_window_view(vol_and_mask, window_shape)
 
     # Separate windowed volume and mask
-    windows_vol = windows[..., 0]
-    windows_mask = windows[..., 1]
+    windows_vol = windows[..., :-1, :, :, :]
+    windows_mask = windows[..., -1, :, :, :]
 
-    # Reshape as "list of vectors"
-    vector_size = volume.shape[0] * 27
-    vectors = windows_vol.reshape(-1, vector_size)  # (num_vectors, vector_size)
-    mask_vectors = windows_mask.reshape(-1, vector_size)
+    # Flatten neighborhoods (but don't flatten completely)
+    windows_vol = windows_vol.reshape(-1, volume.shape[0], 27)  # (num_vectors, C, 27)
+    windows_mask = windows_mask.reshape(-1, 27)  # (num_vectors, 27)
 
     # Keep only center voxel and direct neighbors
-    neighborhood = [4, 10, 12, 13, 14, 16, 22]
-    vectors = vectors[:, neighborhood]
-    mask_vectors = mask_vectors[:, neighborhood]
+    valid_neighborhood = [4, 10, 12, 13, 14, 16, 22]
+    windows_vol = windows_vol[:, :, valid_neighborhood]
+    windows_mask = windows_mask[:, valid_neighborhood]
 
     # Keep only voxels for which the full neighborhood is in white-matter
-    all_in_wm = mask_vectors.sum(axis=1) == 7
-    vectors = vectors[all_in_wm]
+    all_in_wm = windows_mask.sum(axis=1) == 7
+    windows_vol = windows_vol[all_in_wm]
+
+    # Flatten
+    vectors = windows_vol.reshape(-1, volume.shape[0] * 7)
 
     return vectors
 
 
+def test_extract_vectors_from_volume():
+    # Signal:
+    # 0160
+    # 2345
+    # 9780
+    # 0100
+    #
+    # Mask:
+    # 0110
+    # 1111
+    # 0110
+    # 0000
+    #
+    # We expect two voxels in the output
+
+    volume_2d = np.array([[0, 1, 6, 0], [2, 3, 4, 5], [9, 7, 8, 0], [0, 1, 0, 0]])
+    mask_2d = np.array([[0, 1, 1, 0], [1, 1, 1, 1], [0, 1, 1, 0], [0, 0, 0, 0]])
+    expected_vectors = np.array([[0, 1, 2, 3, 4, 7, 0], [0, 6, 3, 4, 5, 8, 0]])
+
+    volume = np.stack([np.zeros_like(volume_2d), volume_2d, np.zeros_like(volume_2d)])
+    volume = volume[None, ...]  # Add a channels axis
+    mask = np.stack([mask_2d, mask_2d, mask_2d])
+
+    vectors = extract_vectors_from_volume(volume, mask)
+
+    assert np.all(vectors == expected_vectors)
+    print('Success!')
+
+
 if __name__ == "__main__":
-    example_in_memory_dataset(
-        zip_path="data/zips/",
-        idx_pairs=zip(2*list(range(10)),10*["1200"] + 10*["7T"]),
-        patch_template_instance=patch_template(1,3),
-        rng = np.random.default_rng(1919),
-        n_per_img=100000
-    )
-
-
-
-
-
-
-
+    test_extract_vectors_from_volume()
