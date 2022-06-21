@@ -1,13 +1,12 @@
 from pathlib import Path
-from typing import Union
 
 import numpy as np
-#import pandas as pd
+import pandas as pd
 import torch
 from torch.utils.data import Dataset
 import torch.nn.functional as F
-#import nibabel as nib
-#from tqdm import tqdm
+import nibabel as nib
+from tqdm import tqdm
 
 
 class TractoinfernoDataset(Dataset):
@@ -29,9 +28,22 @@ class TractoinfernoDataset(Dataset):
         return image, mask
 
     def preprocess(self):
+        all_vectors = []
+        all_sites = []
+
         for i, row in tqdm(self.df.iterrows(), total=len(self.df), desc='Preprocess'):
             x, mask = self._get_from_nifti(None, row['new_id'])
             vectors = extract_vectors_from_volume(x, mask)
+            sites = torch.tensor([self.site_to_idx[row['site']]] * len(vectors))
+            all_vectors.append(vectors)
+            all_sites.append(sites)
+
+            torch.save((vectors, self.site_to_idx[row['site']]), f'preproc_{str(row["new_id"])}.pt')
+
+        all_vectors = torch.cat(all_vectors)
+        all_sites = torch.cat(all_sites)
+
+        return all_vectors, all_sites
 
     def __init__(self, root_path: Path, set: str, n_sh_coeff: int, load_cached=True):
         self.n_sh_coeff = n_sh_coeff
@@ -113,8 +125,11 @@ def test_extract_vectors_from_volume():
     vectors = extract_vectors_from_volume(volume, mask)
 
     assert np.all(vectors == expected_vectors)
-    print('Success!')
+    print('test_extract_vectors_from_volume : Success.')
 
 
 if __name__ == "__main__":
     test_extract_vectors_from_volume()
+
+    TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full'), 'trainset', 2)
+
