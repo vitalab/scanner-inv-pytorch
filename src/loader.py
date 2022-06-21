@@ -169,6 +169,26 @@ class example_in_memory_dataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.idx_plus_scan_type)
 
+
+def extract_vectors_from_volume(volume, mask):
+    # volume shape: (C, D, H, W)
+    # window_shape: (C, 3, 3, 3)
+    window_shape = (volume.shape[0], 3, 3, 3)
+    windows = np.lib.stride_tricks.sliding_window_view(volume, window_shape)
+
+    # Reshape as "list of vectors"
+    vector_size = volume.shape[0] * 27
+    vectors = windows.reshape(-1, vector_size)  # (num_vectors, vector_size)
+
+    # Remove corners, keep only direct center voxel and direct neighbors
+    not_corners = [4, 10, 12, 13, 14, 16, 22]
+    vectors = vectors[:, not_corners]
+
+    # TODO remove non-white-matter voxels
+
+    return vectors
+
+
 if __name__ == "__main__":
     example_in_memory_dataset(
         zip_path="data/zips/",
