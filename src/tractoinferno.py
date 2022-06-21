@@ -2,12 +2,12 @@ from pathlib import Path
 from typing import Union
 
 import numpy as np
-import pandas as pd
+#import pandas as pd
 import torch
 from torch.utils.data import Dataset
 import torch.nn.functional as F
-import nibabel as nib
-from tqdm import tqdm
+#import nibabel as nib
+#from tqdm import tqdm
 
 
 class TractoinfernoDataset(Dataset):
@@ -96,17 +96,18 @@ def test_extract_vectors_from_volume():
     # Mask:
     # 0110
     # 1111
-    # 0110
-    # 0000
+    # 0111
+    # 0010
     #
-    # We expect two voxels in the output
+    # We expect 3 vectors in the output
 
     volume_2d = np.array([[0, 1, 6, 0], [2, 3, 4, 5], [9, 7, 8, 0], [0, 1, 0, 0]])
-    mask_2d = np.array([[0, 1, 1, 0], [1, 1, 1, 1], [0, 1, 1, 0], [0, 0, 0, 0]])
-    expected_vectors = np.array([[0, 1, 2, 3, 4, 7, 0], [0, 6, 3, 4, 5, 8, 0]])
+    mask_2d = np.array([[0, 1, 1, 0], [1, 1, 1, 1], [0, 1, 1, 1], [0, 0, 1, 0]])
+    expected_vectors = np.array([[0, 1, 2, 3, 4, 7, 0], [0, 6, 3, 4, 5, 8, 0], [0, 4, 7, 8, 0, 0, 0]])
 
     volume = np.stack([np.zeros_like(volume_2d), volume_2d, np.zeros_like(volume_2d)])
-    volume = volume[None, ...]  # Add a channels axis
+    volume = np.stack([volume, volume])  # Add a channels axis
+    expected_vectors = np.stack([expected_vectors, expected_vectors], axis=1).reshape(-1, 14)
     mask = np.stack([mask_2d, mask_2d, mask_2d])
 
     vectors = extract_vectors_from_volume(volume, mask)
