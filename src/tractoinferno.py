@@ -32,54 +32,61 @@ class TractoinfernoDataset(Dataset):
         num_vectors = 0
         vector_size = self.n_sh_coeff * 7
 
-        # Create one array of vectors per volume
-        for i, row in tqdm(self.df.iterrows(), total=len(self.df), desc='Preprocess'):
+        # Create one array of vectors per volume, save them to disk
+        preproc_dir = Path('data') / 'tmp'
+        preproc_dir.mkdir(exist_ok=True, parents=True)
+        for i, row in tqdm(self.df.iterrows(), total=len(self.df), desc='Extract vectors'):
             x, mask = self._get_from_nifti(None, row['new_id'])
             vectors = extract_vectors_from_volume(x, mask)
-            torch.save((vectors, self.site_to_idx[row['site']]), f'preproc_{str(row["new_id"])}.pt')  # TODO remove this
+            torch.save((vectors, self.site_to_idx[row['site']]), preproc_dir / f'{str(row["new_id"])}.pt')
             num_vectors += len(vectors)
 
-        # Merge all arrays into h5py
-        # TODO skip writing .pt on disk
+        self.num_vectors = num_vectors
 
-        with h5py.File(f'tractoinferno_vectors_{self.n_sh_coeff}.h5', mode='w') as f:
-            vectors_dset = f.create_dataset("vectors", (num_vectors, vector_size), dtype=np.float)
-            sites_dset = f.create_dataset("sites", (num_vectors,), dtype=np.int)
+        # Merge all arrays into h5py
+        # TODO skip writing .pt on disk? But need to know the number of vectors to create the dataset. Unless we use a
+        # resizable h5py dataset.
+        with h5py.File(self.h5_filename, mode='w') as f:
+            vectors_dset = f.create_dataset("vectors", (num_vectors, vector_size), dtype='float')
+            sites_dset = f.create_dataset("sites", (num_vectors,), dtype='int')
 
             offset = 0
             for i, row in tqdm(self.df.iterrows(), total=len(self.df), desc='Make hdf5'):
-                vectors, site = torch.load(f'preproc_{str(row["new_id"])}.pt')
+                vectors, site = torch.load(preproc_dir / f'{str(row["new_id"])}.pt')
                 n = len(vectors)
                 vectors_dset[offset:offset+n] = vectors
                 sites_dset[offset:offset+n] = site
                 offset += n
 
-    def __init__(self, root_path: Path, set: str, n_sh_coeff: int, load_cached=True):
+    def __init__(self, root_path: Path, set: str, n_sh_coeff: int, force_preprocess=False):
+        self.h5_filename = root_path / f'tractoinferno_vectors_{n_sh_coeff}.h5'
         self.n_sh_coeff = n_sh_coeff
         self.subset_path = root_path / set
         full_df = pd.read_csv(root_path / 'metadata.csv')
         self.df = full_df[full_df['dataset'] == set]
+        self.num_vectors = None
 
         self.idx_to_site = self.df['site'].unique().tolist()
         assert len(self.idx_to_site) == TractoinfernoDataset.num_sites
         self.site_to_idx = {s: i for i, s in enumerate(self.idx_to_site)}
 
-        cache_file = Path('tractoinferno.pt')
-        if load_cached and cache_file.exists():
-            print('Loading cached ' + str(cache_file))
-            data = torch.load(cache_file)
+        if not force_preprocess and self.h5_filename.exists():
+            print('Loading from ' + str(self.h5_filename))
+            with h5py.File(self.h5_filename, 'r') as f:
+                self.num_vectors = len(f['vectors'])
         else:
-            data = self.preprocess()
-            torch.save(data, cache_file)
-            print('Saved cache ' + str(cache_file))
-
-        self.vectors, self.sites = data
+            print('Preprocessing to' + str(self.h5_filename))
+            self.preprocess()
 
     def __getitem__(self, i):
-        return self.vectors[i], self.sites[i]
+        with h5py.File(self.h5_filename, 'r') as f:
+            return (
+                torch.from_numpy(f['vectors'][i]),
+                torch.tensor(f['sites'][i])
+            )
 
     def __len__(self):
-        return len(self.vectors)
+        return self.num_vectors
 
 
 def extract_vectors_from_volume(volume, mask):

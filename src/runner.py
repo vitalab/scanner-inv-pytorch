@@ -78,7 +78,7 @@ dataset = TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full')
 train_loader = torch.utils.data.DataLoader(
     dataset,
     batch_size=batch_size,
-    shuffle=True,
+    shuffle=False,  # FIXME do not shuffle, to let h5py do some caching (find a way to shuffle)
     pin_memory=True
 )
 
