@@ -96,7 +96,7 @@ def adv_training_step( encoder, decoder, adv, x, c ):
     x1 = x[:N_half]
     #c1 = c[:N_half] #unused
     x2 = x[N_half:]
-    c2 = c[:N_half]
+    c2 = c[N_half:]
 
     z_mu, z_log_sigma_sq = encoder.forward(x2)
     std = torch.exp(0.5 * z_log_sigma_sq)
