@@ -7,6 +7,7 @@ from torch.utils.data import Dataset
 import torch.nn.functional as F
 import nibabel as nib
 from tqdm import tqdm
+import h5py
 
 
 class TractoinfernoDataset(Dataset):
@@ -28,23 +29,30 @@ class TractoinfernoDataset(Dataset):
         return image, mask
 
     def preprocess(self):
-        all_vectors = []
-        all_sites = []
+        num_vectors = 0
+        vector_size = self.n_sh_coeff * 7
 
+        # Create one array of vectors per volume
         for i, row in tqdm(self.df.iterrows(), total=len(self.df), desc='Preprocess'):
             x, mask = self._get_from_nifti(None, row['new_id'])
             vectors = extract_vectors_from_volume(x, mask)
-            vectors = torch.from_numpy(vectors)
-            sites = torch.tensor([self.site_to_idx[row['site']]] * len(vectors))
-            all_vectors.append(vectors)
-            all_sites.append(sites)
-
             torch.save((vectors, self.site_to_idx[row['site']]), f'preproc_{str(row["new_id"])}.pt')  # TODO remove this
+            num_vectors += len(vectors)
 
-        all_vectors = torch.cat(all_vectors)
-        all_sites = torch.cat(all_sites)
+        # Merge all arrays into h5py
+        # TODO skip writing .pt on disk
 
-        return all_vectors, all_sites
+        with h5py.File(f'tractoinferno_vectors_{self.n_sh_coeff}.h5', mode='w') as f:
+            vectors_dset = f.create_dataset("vectors", (num_vectors, vector_size), dtype=np.float)
+            sites_dset = f.create_dataset("sites", (num_vectors,), dtype=np.int)
+
+            offset = 0
+            for i, row in tqdm(self.df.iterrows(), total=len(self.df), desc='Make hdf5'):
+                vectors, site = torch.load(f'preproc_{str(row["new_id"])}.pt')
+                n = len(vectors)
+                vectors_dset[offset:offset+n] = vectors
+                sites_dset[offset:offset+n] = site
+                offset += n
 
     def __init__(self, root_path: Path, set: str, n_sh_coeff: int, load_cached=True):
         self.n_sh_coeff = n_sh_coeff
@@ -58,10 +66,12 @@ class TractoinfernoDataset(Dataset):
 
         cache_file = Path('tractoinferno.pt')
         if load_cached and cache_file.exists():
+            print('Loading cached ' + str(cache_file))
             data = torch.load(cache_file)
         else:
             data = self.preprocess()
             torch.save(data, cache_file)
+            print('Saved cache ' + str(cache_file))
 
         self.vectors, self.sites = data
 
