@@ -1,4 +1,4 @@
-
+from pathlib import Path
 
 import torch
 #import loader
@@ -6,6 +6,8 @@ import arch
 import losses
 import numpy as np
 import torch.nn.functional as F
+
+from src.tractoinferno import TractoinfernoDataset
 
 if torch.cuda.is_available():
     device = 'cuda:0'
@@ -71,12 +73,14 @@ scan_type_map = {
 #    n_per_img=100000
 #)
 
-# train_loader = torch.utils.data.DataLoader(
-#     train_iterator,
-#     batch_size=batch_size,
-#     shuffle=True,
-#     pin_memory=True
-# )
+dataset = TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full'), 'trainset', 28)
+
+train_loader = torch.utils.data.DataLoader(
+    dataset,
+    batch_size=batch_size,
+    shuffle=True,
+    pin_memory=True
+)
 
 #val_loader = torch.utils.data.DataLoader(
 #    val_iterator,
@@ -95,9 +99,12 @@ scan_type_map = {
 #center_vox_func = train_iterator.get_center_voxel_function()
 center_vox_func = None
 
-enc_obj = arch.encoder( 322, 32 )
-dec_obj = arch.decoder( 32, 322, 1 )
-adv_obj = arch.adv( 322, 1 )
+#vec_size = 322
+vec_size = dataset.vectors.shape[1]
+
+enc_obj = arch.encoder( vec_size, 32 )
+dec_obj = arch.decoder( 32, vec_size, 1 )
+adv_obj = arch.adv( vec_size, 1 )
 
 enc_obj.to(device)
 dec_obj.to(device)
@@ -117,6 +124,7 @@ loss_weights = {
     "adv" : 10.0\
 }
 
+print('Training starts')
 for epoch in range(n_epochs):
 
     train_loss = 0
@@ -130,18 +138,11 @@ for epoch in range(n_epochs):
     total_marg_loss = 0
     total_adv_loss = 0
 
-    #for d_idx,batch in enumerate(train_loader):
-    for d_idx in range(10):
+    for d_idx, batch in enumerate(train_loader):
         #print(f"batch {d_idx}", flush=True)
 
-        # x = batch[0]
-        # x_subj_space = batch[1]
-        # sh_mat = batch[2]
-        # sh_weights = batch[3]
-        # c = batch[4]
-
-        x = torch.randn(batch_size, 322)
-        c = torch.randint(0, 2, (batch_size, 1))
+        x, c = batch
+        c = c.unsqueeze(1)
         x_subj_space = sh_mat = sh_weights = None
 
         x = x.to(device)

@@ -65,6 +65,12 @@ class TractoinfernoDataset(Dataset):
 
         self.vectors, self.sites = data
 
+    def __getitem__(self, i):
+        return self.vectors[i], self.sites[i]
+
+    def __len__(self):
+        return len(self.vectors)
+
 
 def extract_vectors_from_volume(volume, mask):
     # volume (C, D, H, W)
