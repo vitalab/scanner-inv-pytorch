@@ -14,7 +14,7 @@ class TractoinfernoDataset(Dataset):
     num_sites = 6
     set_names = ['trainset', 'validset', 'testset']
 
-    def _get_from_nifti(self, index, volume_id):
+    def _get_from_nifti(self, volume_id):
         def load_nifti_as_tensor(nifti_file):
             nifti = nib.load(nifti_file)
             npy_volume = nifti.get_fdata('unchanged', np.float32)
@@ -36,7 +36,7 @@ class TractoinfernoDataset(Dataset):
         preproc_dir = Path('data') / 'tmp'
         preproc_dir.mkdir(exist_ok=True, parents=True)
         for i, row in tqdm(self.df.iterrows(), total=len(self.df), desc='Extract vectors'):
-            x, mask = self._get_from_nifti(None, row['new_id'])
+            x, mask = self._get_from_nifti(row['new_id'])
             vectors = extract_vectors_from_volume(x, mask)
             torch.save((vectors, self.site_to_idx[row['site']]), preproc_dir / f'{str(row["new_id"])}.pt')
             num_vectors += len(vectors)
@@ -47,7 +47,7 @@ class TractoinfernoDataset(Dataset):
         # TODO skip writing .pt on disk? But need to know the number of vectors to create the dataset. Unless we use a
         # resizable h5py dataset.
         with h5py.File(self.h5_filename, mode='w') as f:
-            vectors_dset = f.create_dataset("vectors", (num_vectors, vector_size), dtype='float')
+            vectors_dset = f.create_dataset("vectors", (num_vectors, vector_size), dtype='float32')
             sites_dset = f.create_dataset("sites", (num_vectors,), dtype='int')
 
             offset = 0
@@ -72,18 +72,18 @@ class TractoinfernoDataset(Dataset):
 
         if not force_preprocess and self.h5_filename.exists():
             print('Loading from ' + str(self.h5_filename))
-            with h5py.File(self.h5_filename, 'r') as f:
-                self.num_vectors = len(f['vectors'])
         else:
             print('Preprocessing to' + str(self.h5_filename))
             self.preprocess()
 
+        self.h5_file = h5py.File(self.h5_filename, 'r')
+        self.num_vectors = len(self.h5_file['vectors'])
+
     def __getitem__(self, i):
-        with h5py.File(self.h5_filename, 'r') as f:
-            return (
-                torch.from_numpy(f['vectors'][i]),
-                torch.tensor(f['sites'][i])
-            )
+        return (
+            torch.from_numpy(self.h5_file['vectors'][i]),
+            torch.tensor(self.h5_file['sites'][i])
+        )
 
     def __len__(self):
         return self.num_vectors
