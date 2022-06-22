@@ -6,6 +6,7 @@ import arch
 import losses
 import numpy as np
 import torch.nn.functional as F
+from tqdm import tqdm
 
 from src.tractoinferno import TractoinfernoDataset
 
@@ -100,7 +101,7 @@ train_loader = torch.utils.data.DataLoader(
 center_vox_func = None
 
 #vec_size = 322
-vec_size = dataset.vectors.shape[1]
+vec_size = dataset.n_sh_coeff * 7
 
 enc_obj = arch.encoder( vec_size, 32 )
 dec_obj = arch.decoder( 32, vec_size, 1 )
@@ -138,14 +139,14 @@ for epoch in range(n_epochs):
     total_marg_loss = 0
     total_adv_loss = 0
 
-    for d_idx, batch in enumerate(train_loader):
+    for d_idx, batch in enumerate(tqdm(train_loader)):
         #print(f"batch {d_idx}", flush=True)
 
         x, c = batch
         c = c.unsqueeze(1)
         x_subj_space = sh_mat = sh_weights = None
 
-        x = x.to(device)
+        x = x.to(device).type(torch.float32)
         #x_subj_space = x_subj_space.to(device)
         #sh_mat = sh_mat.to(device)
         #sh_weights = sh_weights.to(device)
