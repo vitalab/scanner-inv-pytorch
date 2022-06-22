@@ -34,11 +34,12 @@ class TractoinfernoDataset(Dataset):
         for i, row in tqdm(self.df.iterrows(), total=len(self.df), desc='Preprocess'):
             x, mask = self._get_from_nifti(None, row['new_id'])
             vectors = extract_vectors_from_volume(x, mask)
+            vectors = torch.from_numpy(vectors)
             sites = torch.tensor([self.site_to_idx[row['site']]] * len(vectors))
             all_vectors.append(vectors)
             all_sites.append(sites)
 
-            torch.save((vectors, self.site_to_idx[row['site']]), f'preproc_{str(row["new_id"])}.pt')
+            torch.save((vectors, self.site_to_idx[row['site']]), f'preproc_{str(row["new_id"])}.pt')  # TODO remove this
 
         all_vectors = torch.cat(all_vectors)
         all_sites = torch.cat(all_sites)
