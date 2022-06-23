@@ -79,7 +79,31 @@ class TractoinfernoDataset(Dataset):
         self.h5_file = h5py.File(self.h5_filename, 'r')
         self.num_vectors = len(self.h5_file['vectors'])
 
+        self.permutation = self.generate_multiblock_permutation(
+            n=self.num_vectors,
+            block_size=128,
+            n_parallel_blocks=4
+        )
+
+    @staticmethod
+    def generate_multiblock_permutation(n, block_size, n_parallel_blocks):
+        n_blocks = int(np.ceil(n / block_size))
+        a = np.arange(n_blocks * block_size)
+        unused = len(a) - n
+        a[-unused:] = -1
+        blocks = a.reshape(-1, block_size)
+        np.random.shuffle(blocks)
+        mblocks = blocks.reshape(-1, n_parallel_blocks * block_size)
+        for i in range(3):
+            np.random.shuffle(mblocks[i])
+        perm = mblocks.flatten()
+        perm = perm[perm != -1]
+        assert len(perm) == n
+        assert max(perm) == n - 1
+        return perm
+
     def __getitem__(self, i):
+        i = self.permutation[i]
         return (
             torch.from_numpy(self.h5_file['vectors'][i]),
             torch.tensor(self.h5_file['sites'][i])
