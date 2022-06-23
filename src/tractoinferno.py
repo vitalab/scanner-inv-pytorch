@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -76,16 +77,33 @@ class TractoinfernoDataset(Dataset):
             print('Preprocessing to' + str(self.h5_filename))
             self.preprocess()
 
-        block_size = 128
-        block_size_bytes = block_size * self.n_sh_coeff * 7 * 4
-        total_cache_bytes = block_size_bytes * 6
-        self.h5_file = h5py.File(self.h5_filename, 'r', rdcc_nbytes=total_cache_bytes)
+        self.h5_file = h5py.File(self.h5_filename, 'r')
         self.num_vectors = len(self.h5_file['vectors'])
 
+    def __getitem__(self, i):
+        return (
+            torch.from_numpy(self.h5_file['vectors'][i]),
+            torch.tensor(self.h5_file['sites'][i])
+        )
+
+    def __len__(self):
+        return self.num_vectors
+
+
+class ApproxRandomSamplingHdf5Dataset(Dataset):
+    def __init__(self, datasets: List[h5py.Dataset], block_size, n_parallel_blocks):
+        self.datasets = datasets
+        assert all(len(d) == len(datasets[0]) for d in self.datasets[1:])
+
+        self.block_size = block_size
+        self.n_parallel_blocks = n_parallel_blocks
+        self.cache = [{} for _ in range(len(datasets))]
+
+        # TODO let the sampler do this?
         self.permutation = self.generate_multiblock_permutation(
-            n=self.num_vectors,
+            n=len(datasets[0]),
             block_size=block_size,
-            n_parallel_blocks=4
+            n_parallel_blocks=n_parallel_blocks
         )
 
     @staticmethod
@@ -106,14 +124,20 @@ class TractoinfernoDataset(Dataset):
         return perm
 
     def __getitem__(self, i):
-        i = self.permutation[i]
-        return (
-            torch.from_numpy(self.h5_file['vectors'][i]),
-            torch.tensor(self.h5_file['sites'][i])
-        )
+        block_i = i // self.block_size
+        i_in_block = i % self.block_size
 
-    def __len__(self):
-        return self.num_vectors
+        # Load block if needed
+        if block_i not in self.cache:
+            start = block_i * self.block_size
+            end = (block_i + 1) * self.block_size
+            for d, c in zip(self.datasets, self.cache):
+                c[block_i] = d[start:end]
+
+        # TODO Erase a block if needed
+
+        # Return sample
+        return (c[i_in_block] for c in self.cache)
 
 
 def extract_vectors_from_volume(volume, mask):
