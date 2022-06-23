@@ -42,61 +42,16 @@ scan_type_map = {
     "7T" : 1
 }
 
-#train_iterator = loader.example_in_memory_dataset(
-#    zip_path=f"{PATH_TO_HCP_DATA}",
-#    idx_pairs=zip(2*list(range(10)),10*["1200"] + 10*["7T"]),
-#    patch_template_instance=loader.patch_template(1,3),
-#    scan_type_map=scan_type_map, rng = np.random.default_rng(1919),
-#    n_per_img=100000,
-#)
-
-#train_iterator = loader.example_in_memory_dataset(
-#    zip_path=f"{PATH_TO_HCP_DATA}",
-#    idx_pairs=zip([0,0],["1200"] + ["7T"]),
-#    patch_template_instance=loader.patch_template(1,3),
-#    scan_type_map=scan_type_map, rng = np.random.default_rng(1919),
-#    n_per_img=10000,
-#)
-
-#val_iterator = loader.example_in_memory_dataset(
-#    zip_path=f"{PATH_TO_HCP_DATA}",
-#    idx_pairs=zip(2*list(range(10,20)),10*["1200"] + 10*["7T"]),
-#    patch_template_instance=patch_template(1,3),
-#    rng = np.random.default_rng(1919),
-#    n_per_img=100000
-#)
-#
-#test_iterator = loader.example_in_memory_dataset(
-#    zip_path=f"{PATH_TO_HCP_DATA}",
-#    idx_pairs=zip(2*list(range(20,30)),10*["1200"] + 10*["7T"]),
-#    patch_template_instance=patch_template(1,3),
-#    rng = np.random.default_rng(1919),
-#    n_per_img=100000
-#)
-
 dataset = TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full'), 'trainset', 28)
+dataset_approx_random = dataset.make_approx_random(block_size=128, n_parallel_blocks=4)
 
 train_loader = torch.utils.data.DataLoader(
-    dataset,
+    dataset_approx_random,
     batch_size=batch_size,
-    shuffle=False,  # FIXME do not shuffle, to let h5py do some caching (find a way to shuffle)
+    shuffle=False,
     pin_memory=True,
     num_workers=4
 )
-
-#val_loader = torch.utils.data.DataLoader(
-#    val_iterator,
-#    batch_size=batch_size,
-#    shuffle=True,
-#    pin_memory=True
-#)
-#
-#test_loader = torch.utils.data.DataLoader(
-#    test_iterator,
-#    batch_size=batch_size,
-#    shuffle=True,
-#    pin_memory=True
-#)
 
 #center_vox_func = train_iterator.get_center_voxel_function()
 center_vox_func = None

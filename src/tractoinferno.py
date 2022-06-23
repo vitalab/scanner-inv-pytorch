@@ -89,6 +89,13 @@ class TractoinfernoDataset(Dataset):
     def __len__(self):
         return self.num_vectors
 
+    def make_approx_random(self, block_size, n_parallel_blocks):
+        return ApproxRandomSamplingHdf5Dataset(
+            [self.h5_file['vectors'], self.h5_file['sites']],
+            block_size,
+            n_parallel_blocks
+        )
+
 
 class ApproxRandomSamplingHdf5Dataset(Dataset):
     def __init__(self, datasets: List[h5py.Dataset], block_size, n_parallel_blocks):
