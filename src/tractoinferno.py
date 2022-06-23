@@ -146,6 +146,9 @@ class ApproxRandomSamplingHdf5Dataset(Dataset):
         # Return sample
         return (c[i_in_block] for c in self.cache)
 
+    def __len__(self):
+        return len(self.datasets[0])
+
 
 def extract_vectors_from_volume(volume, mask):
     # volume (C, D, H, W)
