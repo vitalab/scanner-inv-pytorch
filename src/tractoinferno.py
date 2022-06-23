@@ -76,12 +76,15 @@ class TractoinfernoDataset(Dataset):
             print('Preprocessing to' + str(self.h5_filename))
             self.preprocess()
 
-        self.h5_file = h5py.File(self.h5_filename, 'r')
+        block_size = 128
+        block_size_bytes = block_size * self.n_sh_coeff * 7 * 4
+        total_cache_bytes = block_size_bytes * 6
+        self.h5_file = h5py.File(self.h5_filename, 'r', rdcc_nbytes=total_cache_bytes)
         self.num_vectors = len(self.h5_file['vectors'])
 
         self.permutation = self.generate_multiblock_permutation(
             n=self.num_vectors,
-            block_size=128,
+            block_size=block_size,
             n_parallel_blocks=4
         )
 
