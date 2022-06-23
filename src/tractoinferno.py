@@ -87,8 +87,8 @@ class TractoinfernoDataset(Dataset):
 
     @staticmethod
     def generate_multiblock_permutation(n, block_size, n_parallel_blocks):
-        n_blocks = int(np.ceil(n / block_size))
-        a = np.arange(n_blocks * block_size)
+        n_mblocks = int(np.ceil(n / (block_size * n_parallel_blocks)))
+        a = np.arange(n_mblocks * n_parallel_blocks * block_size)
         unused = len(a) - n
         a[-unused:] = -1
         blocks = a.reshape(-1, block_size)
