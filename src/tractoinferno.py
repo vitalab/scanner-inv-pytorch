@@ -144,7 +144,7 @@ class ApproxRandomSamplingHdf5Dataset(Dataset):
         # TODO Erase a block if needed
 
         # Return sample
-        return [c[i_in_block] for c in self.cache]
+        return [c[block_i][i_in_block] for c in self.cache]
 
     def __len__(self):
         return len(self.datasets[0])
