@@ -31,7 +31,7 @@ save_path=args.save_path
 
 n_epochs = 10000
 n_adv_per_enc = 1 #critic index
-burnin=5 #n_epochs for the adversary
+burnin_steps=2000 #n_epochs for the adversary
 LR=1e-4
 adv_LR=1e-4
 batch_size=128
@@ -80,7 +80,8 @@ train_loader = torch.utils.data.DataLoader(
     dataset,
     batch_size=batch_size,
     shuffle=False,  # FIXME do not shuffle, to let h5py do some caching (find a way to shuffle)
-    pin_memory=True
+    pin_memory=True,
+    num_workers=4
 )
 
 #val_loader = torch.utils.data.DataLoader(
@@ -130,8 +131,8 @@ for epoch in range(n_epochs):
 
     train_loss = 0
     adv_loss = 0
-    n = 0
-    n_adv = 0
+    n = 1
+    n_adv = 1
 
     total_recon_loss = 0
     total_kl_loss = 0
@@ -152,7 +153,7 @@ for epoch in range(n_epochs):
         #sh_weights = sh_weights.to(device)
         c = c.to(device)
 
-        if epoch < burnin or d_idx % (n_adv_per_enc+1) > 0:
+        if (epoch == 0 and d_idx < burnin_steps) or d_idx % (n_adv_per_enc+1) > 0:
             adv_optimizer.zero_grad()
             
             loss = losses.adv_training_step(
@@ -187,6 +188,18 @@ for epoch in range(n_epochs):
 
         #del x, x_subj_space, sh_mat, sh_weights, c
 
+        if d_idx % 200 == 0:
+            print("epoch",epoch)
+            print("train loss total",train_loss / n)
+            print("adv loss total",adv_loss / n_adv)
+            print(
+                "train loss, recon", total_recon_loss / n,
+                "kl", total_kl_loss/ n,
+                "proj", total_proj_loss/ n,
+                "marg", total_marg_loss/ n,
+                "adv", total_adv_loss/ n
+            )
+
     if save_path is not None and epoch > burnin and epoch % save_freq == 0:
         torch.save(
             {
@@ -197,7 +210,7 @@ for epoch in range(n_epochs):
             f"{save_path}/{epoch}.pth"
         )
 
-    if epoch > burnin:
+    if False:  # epoch != 0 and d_idx < burnin_steps:
         print("epoch",epoch)
         print("train loss total",train_loss / n)
         print("adv loss total",adv_loss / n_adv)
