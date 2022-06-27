@@ -60,12 +60,12 @@ class TractoinfernoDataset(Dataset):
             offset = 0
             for i, row in tqdm(self.df.iterrows(), total=len(self.df), desc='Make hdf5'):
                 vectors, site = torch.load(preproc_dir / f'{str(row["new_id"])}.pt')
-                n = len(vectors)
+                num = len(vectors)
 
-                indices = np.sort(shuffled_indices[offset:offset+n])
+                indices = np.sort(shuffled_indices[offset:offset+num])
                 vectors_dset[indices] = vectors
                 sites_dset[indices] = site
-                offset += n
+                offset += num
 
     def __init__(self, root_path: Path, set: str, n_sh_coeff: int, force_preprocess=False):
         self.h5_filename = root_path / f'tractoinferno_vectors_{n_sh_coeff}.h5'
@@ -82,7 +82,7 @@ class TractoinfernoDataset(Dataset):
         if not force_preprocess and self.h5_filename.exists():
             print('Loading from ' + str(self.h5_filename))
         else:
-            print('Preprocessing to' + str(self.h5_filename))
+            print('Preprocessing to ' + str(self.h5_filename))
             self.preprocess()
 
         self.h5_file = h5py.File(self.h5_filename, 'r')
