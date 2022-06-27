@@ -38,6 +38,7 @@ adv_LR=1e-4
 batch_size=128
 save_freq=5
 n_sh_coeff = 28
+dim_z = 32
 
 scan_type_map = {
     "1200" : 0,
@@ -60,8 +61,8 @@ center_vox_func = None
 #vec_size = 322
 vec_size = n_sh_coeff * 7
 
-enc_obj = arch.encoder( vec_size, 32 )
-dec_obj = arch.decoder( 32, vec_size, 1 )
+enc_obj = arch.encoder( vec_size, dim_z )
+dec_obj = arch.decoder( dim_z, vec_size, 1 )
 adv_obj = arch.adv( vec_size, 1 )
 
 enc_obj.to(device)
@@ -90,7 +91,8 @@ comet_experiment.log_parameters({
     'adv_LR': adv_LR,
     'batch_size': batch_size,
     'save_freq': save_freq,
-    'n_sh_coeff': n_sh_coeff
+    'n_sh_coeff': n_sh_coeff,
+    'dim_z': dim_z
 })
 comet_experiment.log_parameters(loss_weights, prefix='loss_weight')
 
@@ -133,7 +135,7 @@ for epoch in range(n_epochs):
             loss, (recon_loss,kl_loss, proj_loss, marg_loss, gen_adv_loss) = losses.enc_dec_training_step(
                 enc_obj, dec_obj, adv_obj,
                 x, c, center_vox_func,  x_subj_space, sh_mat, sh_weights,
-                loss_weights, 32
+                loss_weights, dim_z
             )
 
             loss.backward(retain_graph=True)
