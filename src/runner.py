@@ -42,11 +42,10 @@ scan_type_map = {
     "7T" : 1
 }
 
-dataset = TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full'), 'trainset', 28)
-dataset_approx_random = dataset.make_approx_random(block_size=128, n_parallel_blocks=4)
+dataset = TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full'), 'trainset', 28, force_preprocess=True)
 
 train_loader = torch.utils.data.DataLoader(
-    dataset_approx_random,
+    dataset,
     batch_size=batch_size,
     shuffle=False,
     pin_memory=True,

@@ -44,6 +44,8 @@ class TractoinfernoDataset(Dataset):
 
         self.num_vectors = num_vectors
 
+        shuffled_indices = np.random.default_rng().permutation(num_vectors)
+
         # Merge all arrays into h5py
         # TODO skip writing .pt on disk? But need to know the number of vectors to create the dataset. Unless we use a
         # resizable h5py dataset.
@@ -55,8 +57,11 @@ class TractoinfernoDataset(Dataset):
             for i, row in tqdm(self.df.iterrows(), total=len(self.df), desc='Make hdf5'):
                 vectors, site = torch.load(preproc_dir / f'{str(row["new_id"])}.pt')
                 n = len(vectors)
-                vectors_dset[offset:offset+n] = vectors
-                sites_dset[offset:offset+n] = site
+
+                indices = shuffled_indices[offset:offset+n]
+
+                vectors_dset[offset:offset+n][indices] = vectors
+                sites_dset[offset:offset+n][indices] = site
                 offset += n
 
     def __init__(self, root_path: Path, set: str, n_sh_coeff: int, force_preprocess=False):
