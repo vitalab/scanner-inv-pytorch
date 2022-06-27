@@ -36,11 +36,15 @@ class TractoinfernoDataset(Dataset):
         # Create one array of vectors per volume, save them to disk
         preproc_dir = Path('data') / 'tmp'
         preproc_dir.mkdir(exist_ok=True, parents=True)
+        keep = 10000
+        rng = np.random.default_rng()
         for i, row in tqdm(self.df.iterrows(), total=len(self.df), desc='Extract vectors'):
             x, mask = self._get_from_nifti(row['new_id'])
             vectors = extract_vectors_from_volume(x, mask)
+            vectors = rng.choice(vectors, size=keep)  # Sample a subset of the voxels
             torch.save((vectors, self.site_to_idx[row['site']]), preproc_dir / f'{str(row["new_id"])}.pt')
             num_vectors += len(vectors)
+            
 
         self.num_vectors = num_vectors
 
@@ -58,10 +62,9 @@ class TractoinfernoDataset(Dataset):
                 vectors, site = torch.load(preproc_dir / f'{str(row["new_id"])}.pt')
                 n = len(vectors)
 
-                indices = shuffled_indices[offset:offset+n]
-
-                vectors_dset[offset:offset+n][indices] = vectors
-                sites_dset[offset:offset+n][indices] = site
+                indices = np.sort(shuffled_indices[offset:offset+n])
+                vectors_dset[indices] = vectors
+                sites_dset[indices] = site
                 offset += n
 
     def __init__(self, root_path: Path, set: str, n_sh_coeff: int, force_preprocess=False):
@@ -221,5 +224,5 @@ def test_extract_vectors_from_volume():
 if __name__ == "__main__":
     test_extract_vectors_from_volume()
 
-    TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full'), 'trainset', 2)
+    TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full'), 'trainset', 2, force_preprocess=True)
 
