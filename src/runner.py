@@ -2,6 +2,7 @@ from pathlib import Path
 
 import comet_ml
 import torch
+from torch.utils.data import DataLoader, Subset
 #import loader
 import arch
 import losses
@@ -37,7 +38,7 @@ LR=1e-4
 adv_LR=1e-4
 batch_size=128
 save_freq=5
-n_sh_coeff = 28
+n_sh_coeff = 1
 dim_z = 32
 
 scan_type_map = {
@@ -46,9 +47,19 @@ scan_type_map = {
 }
 
 dataset = TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full'), 'trainset', n_sh_coeff)
+n_train = int(len(dataset) * 0.8)
+train_dataset = Subset(dataset, torch.arange(n_train))
+valid_dataset = Subset(dataset, torch.arange(start=n_train, end=len(dataset)))
 
 train_loader = torch.utils.data.DataLoader(
-    dataset,
+    train_dataset,
+    batch_size=batch_size,
+    shuffle=False,  # Do not shuffle, the dataset has been shuffled. shuffle=True is much slower.
+    pin_memory=True,
+    num_workers=4
+)
+valid_loader = torch.utils.data.DataLoader(
+    valid_dataset,
     batch_size=batch_size,
     shuffle=False,
     pin_memory=True,
@@ -99,6 +110,8 @@ comet_experiment.log_parameters(loss_weights, prefix='loss_weight')
 print('Training starts')
 
 global_step = 0
+global_step_valid = 0
+
 for epoch in range(n_epochs):
     recon_loss = torch.tensor(0)
     kl_loss = torch.tensor(0)
@@ -106,6 +119,7 @@ for epoch in range(n_epochs):
     marg_loss = torch.tensor(0)
     gen_adv_loss = torch.tensor(0)
 
+    # Training epoch
     for d_idx, batch in enumerate(tqdm(train_loader)):
         #print(f"batch {d_idx}", flush=True)
 
@@ -151,7 +165,30 @@ for epoch in range(n_epochs):
             'loss_kl': kl_loss.item(),
             'loss_marg': marg_loss.item(),
             'loss_adv': gen_adv_loss.item()
-        }, step=global_step)
+        }, step=global_step, prefix='train')
+
+    # Validation epoch
+    with torch.no_grad():
+        for d_idx, batch in enumerate(tqdm(valid_loader)):
+            x, c = batch
+            c = c.unsqueeze(1)
+            x = x.to(device).type(torch.float32)
+            c = c.to(device)
+            loss, (recon_loss, kl_loss, proj_loss, marg_loss, gen_adv_loss) = losses.enc_dec_training_step(
+                enc_obj, dec_obj, adv_obj,
+                x, c, center_vox_func, None, None, None,
+                loss_weights, dim_z
+            )
+            comet_experiment.log_metrics({
+                'loss': loss.item(),
+                'loss_recon': recon_loss.item(),
+                'loss_kl': kl_loss.item(),
+                'loss_marg': marg_loss.item(),
+                'loss_adv': gen_adv_loss.item()
+            }, step=global_step_valid, prefix='valid')
+            global_step_valid += 1
+    global_step_valid = global_step
+
 
     if save_path is not None and epoch % save_freq == 0:
         torch.save(
