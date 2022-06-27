@@ -97,66 +97,6 @@ class TractoinfernoDataset(Dataset):
     def __len__(self):
         return self.num_vectors
 
-    def make_approx_random(self, block_size, n_parallel_blocks):
-        return ApproxRandomSamplingHdf5Dataset(
-            [self.h5_file['vectors'], self.h5_file['sites']],
-            block_size,
-            n_parallel_blocks
-        )
-
-
-class ApproxRandomSamplingHdf5Dataset(Dataset):
-    def __init__(self, datasets: List[h5py.Dataset], block_size, n_parallel_blocks):
-        self.datasets = datasets
-        assert all(len(d) == len(datasets[0]) for d in self.datasets[1:])
-
-        self.block_size = block_size
-        self.n_parallel_blocks = n_parallel_blocks
-        self.cache = [{} for _ in range(len(datasets))]
-
-        # TODO let the sampler do this?
-        self.permutation = self.generate_multiblock_permutation(
-            n=len(datasets[0]),
-            block_size=block_size,
-            n_parallel_blocks=n_parallel_blocks
-        )
-
-    @staticmethod
-    def generate_multiblock_permutation(n, block_size, n_parallel_blocks):
-        n_mblocks = int(np.ceil(n / (block_size * n_parallel_blocks)))
-        a = np.arange(n_mblocks * n_parallel_blocks * block_size)
-        unused = len(a) - n
-        a[-unused:] = -1
-        blocks = a.reshape(-1, block_size)
-        np.random.shuffle(blocks)
-        mblocks = blocks.reshape(-1, n_parallel_blocks * block_size)
-        for i in range(3):
-            np.random.shuffle(mblocks[i])
-        perm = mblocks.flatten()
-        perm = perm[perm != -1]
-        assert len(perm) == n
-        assert max(perm) == n - 1
-        return perm
-
-    def __getitem__(self, i):
-        block_i = i // self.block_size
-        i_in_block = i % self.block_size
-
-        # Load block if needed
-        if block_i not in self.cache:
-            start = block_i * self.block_size
-            end = (block_i + 1) * self.block_size
-            for d, c in zip(self.datasets, self.cache):
-                c[block_i] = d[start:end]
-
-        # TODO Erase a block if needed
-
-        # Return sample
-        return [c[block_i][i_in_block] for c in self.cache]
-
-    def __len__(self):
-        return len(self.datasets[0])
-
 
 def extract_vectors_from_volume(volume, mask):
     # volume (C, D, H, W)
