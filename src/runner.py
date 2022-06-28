@@ -107,9 +107,9 @@ print('Training starts')
 global_step = 0
 global_step_valid = 0
 
-loss_names = ['recon', 'kl', 'proj', 'marg', 'avg_g', 'adv_d']
-train_metrics = {f'loss_{name}': torchmetrics.MeanMetric() for name in loss_names}
-valid_metrics = {f'loss_{name}': torchmetrics.MeanMetric() for name in loss_names}
+loss_names = [f'loss_{name}' for name in ['recon', 'kl', 'proj', 'marg', 'avg_g', 'adv_d']]
+train_metrics = {name: torchmetrics.MeanMetric() for name in loss_names}
+valid_metrics = {name: torchmetrics.MeanMetric() for name in loss_names}
 
 for epoch in range(n_epochs):
 
