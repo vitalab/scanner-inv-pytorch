@@ -137,7 +137,7 @@ for epoch in range(n_epochs):
             loss.backward(retain_graph=True)
             adv_optimizer.step()
 
-            train_metrics['loss_adv_d'].update(loss)
+            train_metrics['loss_adv_d'].update(loss.item())
         else:
 
             optimizer.zero_grad()
@@ -152,7 +152,7 @@ for epoch in range(n_epochs):
             optimizer.step()
 
             for name, l in zip(loss_names[:5], [recon_loss, kl_loss, proj_loss, marg_loss, gen_adv_loss]):
-                train_metrics[name].update(l)
+                train_metrics[name].update(l.item())
 
         comet_experiment.log_metric('train_loss', loss.item(), step=global_step)
         comet_experiment.log_metrics(
@@ -185,7 +185,7 @@ for epoch in range(n_epochs):
                 loss_weights, dim_z
             )
             for name, l in zip(loss_names[:-1], [recon_loss, kl_loss, proj_loss, marg_loss, gen_adv_loss]):
-                valid_metrics[name].update(l)
+                valid_metrics[name].update(l.item())
 
     # Valid epoch end
     comet_experiment.log_metrics(
