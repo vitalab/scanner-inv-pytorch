@@ -22,7 +22,7 @@ parser = argparse.ArgumentParser(description=\
 )
 
 parser.add_argument("--hcp-zip-path")
-parser.add_argument("--save-path",default=None)
+parser.add_argument("--save-path", default='.')
 
 args = parser.parse_args()
 
@@ -34,7 +34,7 @@ burnin_steps=2000 #n_epochs for the adversary
 LR=1e-4
 adv_LR=1e-4
 batch_size=128
-save_freq=5
+save_freq=1
 n_sh_coeff = 28
 dim_z = 32
 
@@ -203,5 +203,5 @@ for epoch in range(n_epochs):
                 "dec":dec_obj.state_dict(),
                 "adv":adv_obj.state_dict()
             },
-            f"{save_path}/{epoch}.pth"
+            f"{save_path}/ckpt_{epoch}.pth"
         )
