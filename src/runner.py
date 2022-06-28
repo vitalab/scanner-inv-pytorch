@@ -163,7 +163,7 @@ for epoch in range(n_epochs):
         epoch=epoch,
         prefix='ep_train'
     )
-    for m in train_metrics:
+    for m in train_metrics.values():
         m.reset()
 
     # Validation epoch
@@ -185,7 +185,7 @@ for epoch in range(n_epochs):
         epoch=epoch,
         prefix='ep_valid'
     )
-    for m in valid_metrics:
+    for m in valid_metrics.values():
         m.reset()
 
     if save_path is not None and epoch % save_freq == 0:
