@@ -3,11 +3,9 @@ from pathlib import Path
 import comet_ml
 import torch
 from torch.utils.data import DataLoader, Subset
-#import loader
 import arch
 import losses
-import numpy as np
-import torch.nn.functional as F
+import torchmetrics
 from tqdm import tqdm
 
 from src.tractoinferno import TractoinfernoDataset
@@ -28,7 +26,6 @@ parser.add_argument("--save-path",default=None)
 
 args = parser.parse_args()
 
-#PATH_TO_HCP_DATA=args.hcp_zip_path
 save_path=args.save_path
 
 n_epochs = 10000
@@ -66,7 +63,6 @@ valid_loader = torch.utils.data.DataLoader(
     num_workers=4
 )
 
-#center_vox_func = train_iterator.get_center_voxel_function()
 center_vox_func = None
 
 #vec_size = 322
@@ -80,7 +76,6 @@ enc_obj.to(device)
 dec_obj.to(device)
 adv_obj.to(device)
 
-#should use itertools chain
 optimizer = torch.optim.Adam(
     list(enc_obj.parameters()) + list(dec_obj.parameters()), lr=LR
 )
@@ -112,12 +107,11 @@ print('Training starts')
 global_step = 0
 global_step_valid = 0
 
+loss_names = ['recon', 'kl', 'proj', 'marg', 'avg_g', 'adv_d']
+train_metrics = {f'loss_{name}': torchmetrics.MeanMetric() for name in loss_names}
+valid_metrics = {f'loss_{name}': torchmetrics.MeanMetric() for name in loss_names}
+
 for epoch in range(n_epochs):
-    recon_loss = torch.tensor(0)
-    kl_loss = torch.tensor(0)
-    proj_loss = torch.tensor(0)
-    marg_loss = torch.tensor(0)
-    gen_adv_loss = torch.tensor(0)
 
     # Training epoch
     for d_idx, batch in enumerate(tqdm(train_loader)):
@@ -142,6 +136,8 @@ for epoch in range(n_epochs):
 
             loss.backward(retain_graph=True)
             adv_optimizer.step()
+
+            train_metrics['loss_adv_d'].update(loss)
         else:
 
             optimizer.zero_grad()
@@ -155,17 +151,26 @@ for epoch in range(n_epochs):
             loss.backward(retain_graph=True)
             optimizer.step()
 
+            for name, l in zip(loss_names[:5], [recon_loss, kl_loss, proj_loss, marg_loss, gen_adv_loss]):
+                train_metrics[name].update(l)
+
+        comet_experiment.log_metric('train_loss', loss.item(), step=global_step)
+        comet_experiment.log_metrics(
+            {name: m.compute() for name, m in train_metrics.items()},
+            step=global_step,
+            prefix='train'
+        )
+
         global_step += 1
 
-        #del x, x_subj_space, sh_mat, sh_weights, c
-
-        comet_experiment.log_metrics({
-            'loss': loss.item(),
-            'loss_recon': recon_loss.item(),
-            'loss_kl': kl_loss.item(),
-            'loss_marg': marg_loss.item(),
-            'loss_adv': gen_adv_loss.item()
-        }, step=global_step, prefix='train')
+    # Epoch end
+    comet_experiment.log_metrics(
+        {name: m.compute() for name, m in train_metrics.items()},
+        epoch=epoch,
+        prefix='ep_train'
+    )
+    for m in train_metrics:
+        m.reset()
 
     # Validation epoch
     with torch.no_grad():
@@ -179,16 +184,17 @@ for epoch in range(n_epochs):
                 x, c, center_vox_func, None, None, None,
                 loss_weights, dim_z
             )
-            comet_experiment.log_metrics({
-                'loss': loss.item(),
-                'loss_recon': recon_loss.item(),
-                'loss_kl': kl_loss.item(),
-                'loss_marg': marg_loss.item(),
-                'loss_adv': gen_adv_loss.item()
-            }, step=global_step_valid, prefix='valid')
-            global_step_valid += 1
-    global_step_valid = global_step
+            for name, l in zip(loss_names[:-1], [recon_loss, kl_loss, proj_loss, marg_loss, gen_adv_loss]):
+                valid_metrics[name].update(l)
 
+    # Valid epoch end
+    comet_experiment.log_metrics(
+        {name: m.compute() for name, m in valid_metrics.items()},
+        epoch=epoch,
+        prefix='ep_valid'
+    )
+    for m in valid_metrics:
+        m.reset()
 
     if save_path is not None and epoch % save_freq == 0:
         torch.save(
