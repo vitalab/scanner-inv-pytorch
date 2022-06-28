@@ -114,7 +114,7 @@ valid_metrics = {name: torchmetrics.MeanMetric() for name in gen_step_loss_names
 for epoch in range(n_epochs):
 
     # Training epoch
-    for d_idx, batch in enumerate(tqdm(train_loader)):
+    for d_idx, batch in enumerate(tqdm(train_loader, desc=f'Train epoch {epoch}')):
         #print(f"batch {d_idx}", flush=True)
 
         x, c = batch
@@ -168,7 +168,7 @@ for epoch in range(n_epochs):
 
     # Validation epoch
     with torch.no_grad():
-        for d_idx, batch in enumerate(tqdm(valid_loader)):
+        for d_idx, batch in enumerate(tqdm(valid_loader, desc=f'Valid epoch {epoch}')):
             x, c = batch
             c = c.unsqueeze(1)
             x = x.to(device).type(torch.float32)
