@@ -38,7 +38,7 @@ LR=1e-4
 adv_LR=1e-4
 batch_size=128
 save_freq=5
-n_sh_coeff = 1
+n_sh_coeff = 28
 dim_z = 32
 
 scan_type_map = {

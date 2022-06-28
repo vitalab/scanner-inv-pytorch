@@ -164,5 +164,5 @@ def test_extract_vectors_from_volume():
 if __name__ == "__main__":
     test_extract_vectors_from_volume()
 
-    TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full'), 'trainset', 2, force_preprocess=True)
+    TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full'), 'trainset', 28, force_preprocess=True)
 
