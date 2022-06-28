@@ -107,9 +107,9 @@ print('Training starts')
 global_step = 0
 global_step_valid = 0
 
-loss_names = [f'loss_{name}' for name in ['recon', 'kl', 'proj', 'marg', 'avg_g', 'adv_d']]
-train_metrics = {name: torchmetrics.MeanMetric() for name in loss_names}
-valid_metrics = {name: torchmetrics.MeanMetric() for name in loss_names}
+gen_step_loss_names = [f'loss_{name}' for name in ['recon', 'kl', 'marg', 'adv_g']]
+train_metrics = {name: torchmetrics.MeanMetric() for name in gen_step_loss_names + ['adv_d']}
+valid_metrics = {name: torchmetrics.MeanMetric() for name in gen_step_loss_names + ['adv_d']}
 
 for epoch in range(n_epochs):
 
@@ -142,16 +142,14 @@ for epoch in range(n_epochs):
 
             optimizer.zero_grad()
 
-            loss, (recon_loss,kl_loss, proj_loss, marg_loss, gen_adv_loss) = losses.enc_dec_training_step(
-                enc_obj, dec_obj, adv_obj,
-                x, c, center_vox_func,  x_subj_space, sh_mat, sh_weights,
-                loss_weights, dim_z
+            loss, separate_losses = losses.enc_dec_training_step(
+                enc_obj, dec_obj, adv_obj, x, c, loss_weights, dim_z
             )
 
             loss.backward(retain_graph=True)
             optimizer.step()
 
-            for name, l in zip(loss_names[:5], [recon_loss, kl_loss, proj_loss, marg_loss, gen_adv_loss]):
+            for name, l in zip(gen_step_loss_names, separate_losses):
                 train_metrics[name].update(l.item())
 
         comet_experiment.log_metric('train_loss', loss.item(), step=global_step)
@@ -179,12 +177,10 @@ for epoch in range(n_epochs):
             c = c.unsqueeze(1)
             x = x.to(device).type(torch.float32)
             c = c.to(device)
-            loss, (recon_loss, kl_loss, proj_loss, marg_loss, gen_adv_loss) = losses.enc_dec_training_step(
-                enc_obj, dec_obj, adv_obj,
-                x, c, center_vox_func, None, None, None,
-                loss_weights, dim_z
+            loss, separate_losses = losses.enc_dec_training_step(
+                enc_obj, dec_obj, adv_obj, x, c, loss_weights, dim_z
             )
-            for name, l in zip(loss_names[:-1], [recon_loss, kl_loss, proj_loss, marg_loss, gen_adv_loss]):
+            for name, l in zip(gen_step_loss_names, separate_losses):
                 valid_metrics[name].update(l.item())
 
     # Valid epoch end
