@@ -30,7 +30,7 @@ save_path=args.save_path
 
 n_epochs = 10000
 n_adv_per_enc = 1 #critic index
-burnin_steps=2000 #n_epochs for the adversary
+burnin_epochs=5 #n_epochs for the adversary
 LR=1e-4
 adv_LR=1e-4
 batch_size=128
@@ -126,7 +126,7 @@ for epoch in range(n_epochs):
         #sh_weights = sh_weights.to(device)
         c = c.to(device)
 
-        if (epoch == 0 and d_idx < burnin_steps) or d_idx % (n_adv_per_enc+1) > 0:
+        if epoch < burnin_epochs or d_idx % (n_adv_per_enc+1) > 0:
             adv_optimizer.zero_grad()
             
             loss = losses.adv_training_step(
