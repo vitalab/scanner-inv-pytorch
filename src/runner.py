@@ -2,7 +2,7 @@ from pathlib import Path
 
 import comet_ml
 import torch
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader
 import arch
 import losses
 import torchmetrics
@@ -91,7 +91,7 @@ loss_weights = {
 comet_experiment = comet_ml.Experiment(project_name='harmon_moyer')
 comet_experiment.log_parameters({
     'n_adv_per_enc': n_adv_per_enc,
-    'burnin_steps': burnin_steps,
+    'burnin_epochs': burnin_epochs,
     'LR': LR,
     'adv_LR': adv_LR,
     'batch_size': batch_size,
