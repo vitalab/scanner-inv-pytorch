@@ -43,10 +43,9 @@ scan_type_map = {
     "7T" : 1
 }
 
-dataset = TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full'), 'trainset', n_sh_coeff)
-n_train = int(len(dataset) * 0.8)
-train_dataset = Subset(dataset, torch.arange(n_train))
-valid_dataset = Subset(dataset, torch.arange(start=n_train, end=len(dataset)))
+# FIXME add command line arg for dataset path
+train_dataset = TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full'), 'trainset', n_sh_coeff)
+valid_dataset = TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full'), 'validset', n_sh_coeff)
 
 train_loader = torch.utils.data.DataLoader(
     train_dataset,

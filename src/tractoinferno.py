@@ -68,7 +68,7 @@ class TractoinfernoDataset(Dataset):
                 offset += num
 
     def __init__(self, root_path: Path, set: str, n_sh_coeff: int, force_preprocess=False):
-        self.h5_filename = root_path / f'tractoinferno_vectors__{set}_{n_sh_coeff}.h5'
+        self.h5_filename = root_path / f'tractoinferno_vectors_{set}_{n_sh_coeff}.h5'
         self.n_sh_coeff = n_sh_coeff
         self.subset_path = root_path / set
         full_df = pd.read_csv(root_path / 'metadata.csv')
