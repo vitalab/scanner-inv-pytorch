@@ -1,8 +1,13 @@
+import argparse
+from pathlib import Path
+
 import numpy as np
 import scipy.ndimage
 import torch
+import nibabel as nib
 
 from src.tractoinferno import extract_vectors_from_volume
+from src.arch import encoder as Encoder, decoder as Decoder
 
 
 def project_vectors_to_site(vectors, target_site, encoder, decoder):
@@ -44,3 +49,49 @@ def predict_volume(image, mask, target_site, encoder, decoder):
         output[i_chan][indices_wm_voxels] = center_voxels[i_chan]
 
     return output
+
+
+def load_nifti_as_tensor(nifti_file):
+    nifti = nib.load(nifti_file)
+    npy_volume = nifti.get_fdata('unchanged', np.float32)
+    return torch.from_numpy(npy_volume).to(torch.float32), nifti
+
+
+def main():
+    """Harmonize on a volume by projecting it to a target site"""
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--image', required=True, help='Nifti file of the image')
+    ap.add_argument('--mask', required=True, help='Nifti file of the white matter mask')
+    ap.add_argument('--model_weights', required=True)
+    ap.add_argument('--target_site', type=int, default=0)
+    ap.add_argument('--vector_size', type=int, default=28 * 7)
+    ap.add_argument('--dim_z', type=int, default=32)
+    ap.add_argument('--num_sites', type=int, default=6)
+    args = ap.parse_args()
+
+    # Load model
+    checkpoint = torch.load(args.model_weights)
+    encoder = Encoder(args.vector_size, args.dim_z)
+    decoder = Decoder(args.dim_z, args.vector_size, args.num_sites)
+    encoder.load_state_dict(checkpoint['enc'])
+    decoder.load_state_dict(checkpoint['dec'])
+
+    # Load image and mask
+    image, nifti_object = load_nifti_as_tensor(args.image)
+    image = torch.movedim(image, -1, 0)  # Move SH dim to the front
+    mask, _ = load_nifti_as_tensor(args.mask)
+
+    # Predict
+    recon_image = predict_volume(image, mask, args.target_site, encoder, decoder)
+    recon_image = torch.movedim(recon_image, 0, -1)  # Move SH dim to the back
+    recon_image = recon_image.cpu().numpy()
+
+    # Save output
+    out_nifti = nib.Nifti1Pair(recon_image, nifti_object.affine, nifti_object.header)
+    out_filename = Path(args.image).parent / (Path(args.image).stem + '_harmonized.nii')
+    nib.nifti1.save(out_nifti, str(out_filename))
+
+
+if __name__ == '__main__':
+    main()
