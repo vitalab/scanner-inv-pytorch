@@ -29,7 +29,9 @@ class TractoinfernoDataset(Dataset):
 
         return image, mask
 
-    def preprocess(self):
+    def preprocess(self, debug_dataset=False):
+        # debug_dataset=True will create a smaller dataset for debugging purposes
+
         num_vectors = 0
         vector_size = self.n_sh_coeff * 7
 
@@ -42,10 +44,13 @@ class TractoinfernoDataset(Dataset):
         keep = 10000
         rng = np.random.default_rng()
         n_per_site = {s: 0 for s in range(6)}
+        skipped = []
         for i, row in tqdm(self.df.iterrows(), total=len(self.df), desc='Extract vectors'):
-            if n_per_site[self.site_to_idx[row['site']]] == 2:
-                continue
-            n_per_site[self.site_to_idx[row['site']]] += 1
+            if debug_dataset:
+                if n_per_site[self.site_to_idx[row['site']]] == 2:
+                    skipped.append(i)
+                    continue
+                n_per_site[self.site_to_idx[row['site']]] += 1
 
             x, mask = self._get_from_nifti(row['new_id'])
             vectors = extract_vectors_from_volume(x, mask)
@@ -58,18 +63,15 @@ class TractoinfernoDataset(Dataset):
         shuffled_indices = np.random.default_rng().permutation(num_vectors)
 
         # Merge all arrays into h5py
-        # TODO skip writing .pt on disk? But need to know the number of vectors to create the dataset. Unless we use a
-        # resizable h5py dataset.
         with h5py.File(self.h5_filename, mode='w') as f:
             vectors_dset = f.create_dataset("vectors", (num_vectors, vector_size), dtype='float32')
             sites_dset = f.create_dataset("sites", (num_vectors,), dtype='int')
 
             offset = 0
             for i, row in tqdm(self.df.iterrows(), total=len(self.df), desc='Make hdf5'):
-                try:
-                    vectors, site = torch.load(preproc_dir / f'{str(row["new_id"])}.pt')
-                except FileNotFoundError:
+                if debug_dataset and i in skipped:
                     continue
+                vectors, site = torch.load(preproc_dir / f'{str(row["new_id"])}.pt')
                 num = len(vectors)
 
                 indices = np.sort(shuffled_indices[offset:offset+num])
@@ -96,7 +98,7 @@ class TractoinfernoDataset(Dataset):
             print('Loading from ' + str(self.h5_filename))
         else:
             print('Preprocessing to ' + str(self.h5_filename))
-            self.preprocess()
+            self.preprocess(debug_dataset=debug)
 
         self.h5_file = h5py.File(self.h5_filename, 'r')
         self.num_vectors = len(self.h5_file['vectors'])
