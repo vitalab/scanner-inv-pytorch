@@ -30,7 +30,7 @@ save_path=args.save_path
 
 n_epochs = 10000
 n_adv_per_enc = 1 #critic index
-burnin_epochs=5 #n_epochs for the adversary
+burnin_epochs=1 #n_epochs for the adversary
 LR=1e-4
 adv_LR=1e-4
 batch_size=128
