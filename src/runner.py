@@ -23,6 +23,7 @@ parser = argparse.ArgumentParser(description=\
 
 parser.add_argument("--hcp-zip-path")
 parser.add_argument("--save-path", default='./checkpoints')
+parser.add_argument("--debug", action="store_true")
 
 args = parser.parse_args()
 
@@ -35,7 +36,7 @@ LR=1e-4
 adv_LR=1e-4
 batch_size=128
 save_freq=1
-n_sh_coeff = 28
+n_sh_coeff = 1 if args.debug else 28
 dim_z = 32
 num_sites = 6
 
@@ -45,8 +46,8 @@ scan_type_map = {
 }
 
 # FIXME add command line arg for dataset path
-train_dataset = TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full'), 'trainset', n_sh_coeff)
-valid_dataset = TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full'), 'validset', n_sh_coeff)
+train_dataset = TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full'), 'trainset', n_sh_coeff, debug=args.debug)
+valid_dataset = TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full'), 'validset', n_sh_coeff, debug=args.debug)
 
 train_loader = torch.utils.data.DataLoader(
     train_dataset,

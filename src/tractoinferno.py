@@ -36,15 +36,22 @@ class TractoinfernoDataset(Dataset):
         # Create one array of vectors per volume, save them to disk
         preproc_dir = Path('data') / 'tmp'
         preproc_dir.mkdir(exist_ok=True, parents=True)
+        for f in preproc_dir.glob('*.pt'):
+            f.unlink()
+
         keep = 10000
         rng = np.random.default_rng()
+        n_per_site = {s: 0 for s in range(6)}
         for i, row in tqdm(self.df.iterrows(), total=len(self.df), desc='Extract vectors'):
+            if n_per_site[self.site_to_idx[row['site']]] == 2:
+                continue
+            n_per_site[self.site_to_idx[row['site']]] += 1
+
             x, mask = self._get_from_nifti(row['new_id'])
             vectors = extract_vectors_from_volume(x, mask)
             vectors = rng.choice(vectors, size=keep)  # Sample a subset of the voxels
             torch.save((vectors, self.site_to_idx[row['site']]), preproc_dir / f'{str(row["new_id"])}.pt')
             num_vectors += len(vectors)
-            
 
         self.num_vectors = num_vectors
 
@@ -59,7 +66,10 @@ class TractoinfernoDataset(Dataset):
 
             offset = 0
             for i, row in tqdm(self.df.iterrows(), total=len(self.df), desc='Make hdf5'):
-                vectors, site = torch.load(preproc_dir / f'{str(row["new_id"])}.pt')
+                try:
+                    vectors, site = torch.load(preproc_dir / f'{str(row["new_id"])}.pt')
+                except FileNotFoundError:
+                    continue
                 num = len(vectors)
 
                 indices = np.sort(shuffled_indices[offset:offset+num])
@@ -67,8 +77,11 @@ class TractoinfernoDataset(Dataset):
                 sites_dset[indices] = site
                 offset += num
 
-    def __init__(self, root_path: Path, set: str, n_sh_coeff: int, force_preprocess=False):
-        self.h5_filename = root_path / f'tractoinferno_vectors_{set}_{n_sh_coeff}.h5'
+    def __init__(self, root_path: Path, set: str, n_sh_coeff: int, force_preprocess=False, debug=False):
+        basename = f'tractoinferno_vectors_{set}_{n_sh_coeff}'
+        if debug:
+            basename += '_debug'
+        self.h5_filename = root_path / (basename + '.h5')
         self.n_sh_coeff = n_sh_coeff
         self.subset_path = root_path / set
         full_df = pd.read_csv(root_path / 'metadata.csv')
