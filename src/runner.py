@@ -22,7 +22,7 @@ parser = argparse.ArgumentParser(description=\
 )
 
 parser.add_argument("--hcp-zip-path")
-parser.add_argument("--save-path", default='.')
+parser.add_argument("--save-path", default='./checkpoints')
 
 args = parser.parse_args()
 
@@ -189,6 +189,7 @@ for epoch in range(n_epochs):
         m.reset()
 
     if save_path is not None and epoch % save_freq == 0:
+        Path(save_path).mkdir(exist_ok=True)
         torch.save(
             {
                 "enc":enc_obj.state_dict(),
