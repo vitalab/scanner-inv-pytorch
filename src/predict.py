@@ -4,6 +4,7 @@ from pathlib import Path
 import numpy as np
 import scipy.ndimage
 import torch
+from torch.nn.functional import one_hot
 import nibabel as nib
 
 from src.tractoinferno import extract_vectors_from_volume
@@ -13,7 +14,7 @@ from src.arch import encoder as Encoder, decoder as Decoder
 def project_vectors_to_site(vectors, target_site, encoder, decoder):
     c = torch.tensor([target_site] * len(vectors))
     z_mu, _ = encoder.forward(vectors)
-    recon_vectors = decoder.forward(z_mu, c)
+    recon_vectors = decoder.forward(z_mu, one_hot(c))
     return recon_vectors
 
 

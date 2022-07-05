@@ -48,7 +48,7 @@ def enc_dec_training_step( encoder, decoder, adv, x, c, loss_weights, dim_z):
     std = torch.exp(0.5 * z_log_sigma_sq)
     eps = torch.randn_like(std)
     z = eps * std + z_mu
-    x_recon = decoder.forward( z, c )
+    x_recon = decoder.forward( z, F.one_hot(c) )
 
     recon_loss = F.mse_loss( x_recon, x )
 
@@ -85,7 +85,7 @@ def adv_training_step( encoder, decoder, adv, x, c ):
     std = torch.exp(0.5 * z_log_sigma_sq)
     eps = torch.randn_like(std)
     z = eps * std + z_mu
-    x_recon = decoder.forward(z,c2)
+    x_recon = decoder.forward(z, F.one_hot(c2) )
 
     labels_pred = torch.cat((
         adv.forward(x1),

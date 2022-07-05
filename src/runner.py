@@ -37,6 +37,7 @@ batch_size=128
 save_freq=1
 n_sh_coeff = 28
 dim_z = 32
+num_sites = 6
 
 scan_type_map = {
     "1200" : 0,
@@ -68,8 +69,8 @@ center_vox_func = None
 vec_size = n_sh_coeff * 7
 
 enc_obj = arch.encoder( vec_size, dim_z )
-dec_obj = arch.decoder( dim_z, vec_size, 1 )
-adv_obj = arch.adv( vec_size, 1 )
+dec_obj = arch.decoder( dim_z, vec_size, num_sites )
+adv_obj = arch.adv( vec_size, num_sites )
 
 enc_obj.to(device)
 dec_obj.to(device)
