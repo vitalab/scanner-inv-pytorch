@@ -153,7 +153,7 @@ for epoch in range(n_epochs):
 
     # Epoch end
     comet_experiment.log_metrics(
-        {name: m.compute() for name, m in train_metrics.items()},
+        {name: m.compute() for name, m in train_metrics.items() if m._update_called()},
         epoch=epoch,
         prefix='ep_train'
     )
@@ -174,7 +174,7 @@ for epoch in range(n_epochs):
 
     # Valid epoch end
     comet_experiment.log_metrics(
-        {name: m.compute() for name, m in valid_metrics.items()},
+        {name: m.compute() for name, m in valid_metrics.items() if m._update_called()},
         epoch=epoch,
         prefix='ep_valid'
     )
