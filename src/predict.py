@@ -12,10 +12,13 @@ from src.arch import encoder as Encoder, decoder as Decoder
 
 
 def project_vectors_to_site(vectors, target_site, encoder, decoder):
+    vectors = torch.from_numpy(vectors)
     c = torch.tensor([target_site] * len(vectors))
-    z_mu, _ = encoder.forward(vectors)
-    recon_vectors = decoder.forward(z_mu, one_hot(c))
-    return recon_vectors
+
+    with torch.no_grad():
+        z_mu, _ = encoder.forward(vectors)
+        recon_vectors = decoder.forward(z_mu, one_hot(c))
+    return recon_vectors.numpy()
 
 
 def predict_volume(image, mask, target_site, encoder, decoder):
@@ -47,7 +50,7 @@ def predict_volume(image, mask, target_site, encoder, decoder):
     # Reshape as original shape (C, D, H, W)
     output = np.zeros_like(image)
     for i_chan in range(num_sh_coef):
-        output[i_chan][indices_wm_voxels] = center_voxels[i_chan]
+        output[i_chan][indices_wm_voxels] = center_voxels[:, i_chan]
 
     return output
 
@@ -72,7 +75,7 @@ def main():
     args = ap.parse_args()
 
     # Load model
-    checkpoint = torch.load(args.model_weights)
+    checkpoint = torch.load(args.model_weights, map_location='cpu')
     encoder = Encoder(args.vector_size, args.dim_z)
     decoder = Decoder(args.dim_z, args.vector_size, args.num_sites)
     encoder.load_state_dict(checkpoint['enc'])
@@ -85,8 +88,7 @@ def main():
 
     # Predict
     recon_image = predict_volume(image, mask, args.target_site, encoder, decoder)
-    recon_image = torch.movedim(recon_image, 0, -1)  # Move SH dim to the back
-    recon_image = recon_image.cpu().numpy()
+    recon_image = np.moveaxis(recon_image, 0, -1)  # Move SH dim to the back
 
     # Save output
     out_nifti = nib.Nifti1Pair(recon_image, nifti_object.affine, nifti_object.header)
