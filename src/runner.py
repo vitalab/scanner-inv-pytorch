@@ -70,7 +70,7 @@ vec_size = n_sh_coeff * 7
 
 enc_obj = arch.encoder( vec_size, dim_z )
 dec_obj = arch.decoder( dim_z, vec_size, num_sites )
-adv_obj = arch.adv( vec_size, num_sites )
+adv_obj = arch.adv( vec_size, 1 )
 
 enc_obj.to(device)
 dec_obj.to(device)
@@ -115,16 +115,10 @@ for epoch in range(n_epochs):
 
     # Training epoch
     for d_idx, batch in enumerate(tqdm(train_loader, desc=f'Train epoch {epoch}')):
-        #print(f"batch {d_idx}", flush=True)
-
         x, c = batch
-        c = c.unsqueeze(1)
         x_subj_space = sh_mat = sh_weights = None
 
         x = x.to(device).type(torch.float32)
-        #x_subj_space = x_subj_space.to(device)
-        #sh_mat = sh_mat.to(device)
-        #sh_weights = sh_weights.to(device)
         c = c.to(device)
 
         if epoch < burnin_epochs or d_idx % (n_adv_per_enc+1) > 0:
@@ -170,7 +164,6 @@ for epoch in range(n_epochs):
     with torch.no_grad():
         for d_idx, batch in enumerate(tqdm(valid_loader, desc=f'Valid epoch {epoch}')):
             x, c = batch
-            c = c.unsqueeze(1)
             x = x.to(device).type(torch.float32)
             c = c.to(device)
             loss, separate_losses = losses.enc_dec_training_step(
