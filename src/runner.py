@@ -109,8 +109,8 @@ global_step = 0
 global_step_valid = 0
 
 gen_step_loss_names = [f'loss_{name}' for name in ['recon', 'kl', 'marg', 'adv_g']]
-train_metrics = {name: torchmetrics.MeanMetric() for name in gen_step_loss_names + ['loss_adv_d']}
-valid_metrics = {name: torchmetrics.MeanMetric() for name in gen_step_loss_names + ['loss_adv_d']}
+train_metrics = {name: torchmetrics.MeanMetric(nan_strategy='error') for name in gen_step_loss_names + ['loss_adv_d']}
+valid_metrics = {name: torchmetrics.MeanMetric(nan_strategy='error') for name in gen_step_loss_names + ['loss_adv_d']}
 
 for epoch in range(n_epochs):
 
@@ -146,7 +146,11 @@ for epoch in range(n_epochs):
             optimizer.step()
 
             for name, l in zip(gen_step_loss_names, separate_losses):
-                train_metrics[name].update(l.item())
+                try:
+                    train_metrics[name].update(l.item())
+                except RuntimeError:
+                    print('While updating metric', name)
+                    raise
                 comet_experiment.log_metric(f'train_{name}', l.item(), step=global_step)
 
         comet_experiment.log_metric('train_loss', loss.item(), step=global_step)
@@ -171,7 +175,11 @@ for epoch in range(n_epochs):
                 enc_obj, dec_obj, adv_obj, x, c, loss_weights, dim_z
             )
             for name, l in zip(gen_step_loss_names, separate_losses):
-                valid_metrics[name].update(l.item())
+                try:
+                    valid_metrics[name].update(l.item())
+                except RuntimeError:
+                    print('While updating metric', name)
+                    raise
 
     # Valid epoch end
     comet_experiment.log_metrics(
