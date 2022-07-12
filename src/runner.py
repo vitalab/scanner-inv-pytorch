@@ -126,7 +126,7 @@ for epoch in range(n_epochs):
             adv_optimizer.zero_grad()
             
             loss = losses.adv_training_step(
-                enc_obj, dec_obj, adv_obj, x, c
+                enc_obj, dec_obj, adv_obj, x, c, num_sites=num_sites
             )
 
             loss.backward(retain_graph=True)
@@ -139,7 +139,7 @@ for epoch in range(n_epochs):
             optimizer.zero_grad()
 
             loss, separate_losses = losses.enc_dec_training_step(
-                enc_obj, dec_obj, adv_obj, x, c, loss_weights, dim_z
+                enc_obj, dec_obj, adv_obj, x, c, loss_weights, dim_z, num_sites=num_sites
             )
 
             loss.backward(retain_graph=True)

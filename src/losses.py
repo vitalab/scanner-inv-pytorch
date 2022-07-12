@@ -40,7 +40,7 @@ def all_pairs_gaussian_kl(mu, log_sigma_sq, dim_z):
 #
 # enc, dec should be in training mode
 # adv should be in eval mode
-def enc_dec_training_step( encoder, decoder, adv, x, c, loss_weights, dim_z):
+def enc_dec_training_step( encoder, decoder, adv, x, c, loss_weights, dim_z, num_sites):
     z_mu, z_log_sigma_sq = encoder.forward(x)
 
     kl_loss = kl_loss_gaussians( z_mu, z_log_sigma_sq )
@@ -48,7 +48,7 @@ def enc_dec_training_step( encoder, decoder, adv, x, c, loss_weights, dim_z):
     std = torch.exp(0.5 * z_log_sigma_sq)
     eps = torch.randn_like(std)
     z = eps * std + z_mu
-    x_recon = decoder.forward( z, F.one_hot(c) )
+    x_recon = decoder.forward( z, F.one_hot(c, num_classes=num_sites) )
 
     recon_loss = F.mse_loss( x_recon, x )
 
@@ -74,7 +74,7 @@ def enc_dec_training_step( encoder, decoder, adv, x, c, loss_weights, dim_z):
     return loss, (recon_loss, kl_loss, marg_loss, adv_loss)
 
 
-def adv_training_step( encoder, decoder, adv, x, c ):
+def adv_training_step( encoder, decoder, adv, x, c, num_sites ):
     N_half = x.size()[0] // 2
     x1 = x[:N_half]
     #c1 = c[:N_half] #unused
@@ -85,7 +85,7 @@ def adv_training_step( encoder, decoder, adv, x, c ):
     std = torch.exp(0.5 * z_log_sigma_sq)
     eps = torch.randn_like(std)
     z = eps * std + z_mu
-    x_recon = decoder.forward(z, F.one_hot(c2) )
+    x_recon = decoder.forward(z, F.one_hot(c2, num_classes=num_sites) )
 
     labels_pred = torch.cat((
         adv.forward(x1),
