@@ -172,7 +172,7 @@ for epoch in range(n_epochs):
             x = x.to(device).type(torch.float32)
             c = c.to(device)
             loss, separate_losses = losses.enc_dec_training_step(
-                enc_obj, dec_obj, adv_obj, x, c, loss_weights, dim_z
+                enc_obj, dec_obj, adv_obj, x, c, loss_weights, dim_z, num_sites=num_sites
             )
             for name, l in zip(gen_step_loss_names, separate_losses):
                 try:
