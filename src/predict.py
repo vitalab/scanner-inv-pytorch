@@ -47,6 +47,11 @@ def predict_volume(image, mask, target_site, encoder, decoder):
     num_wm_voxels = len(vectors)
     assert num_wm_voxels == len(indices_wm_voxels[0])
 
+    # Normalize vectors
+    # Note: it would be more efficient to transform the voxels before they are put into vectors (but only WM voxels)
+    vectors -= TractoinfernoDataset.vec_mean[None, :]
+    vectors /= TractoinfernoDataset.vec_std[None, :]
+
     print("  Running model")
     # Predict -- reconstruct voxels into target site
     recon_vectors = project_vectors_to_site(vectors, target_site, encoder, decoder)
@@ -55,6 +60,10 @@ def predict_volume(image, mask, target_site, encoder, decoder):
     # Extract center voxel from recon_vectors
     num_sh_coef = image.shape[0]
     center_voxels = recon_vectors.reshape(num_wm_voxels, num_sh_coef, 7)[:, :, 3]  # -> (num_voxels, num_sh_coef)
+
+    # Unnormalize
+    center_voxels *= TractoinfernoDataset.per_coef_std[None, :]
+    center_voxels += TractoinfernoDataset.per_coef_mean[None, :]
 
     # Reshape as original shape (C, D, H, W)
     output = np.zeros_like(image)

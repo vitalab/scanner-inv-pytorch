@@ -15,6 +15,12 @@ class TractoinfernoDataset(Dataset):
     num_sites = 6
     set_names = ['trainset', 'validset', 'testset']
 
+    per_coef_mean = np.array([1.73746979e+00,  1.85409542e-02, -1.09420985e-03,  3.89412534e-03, -2.02376191e-02,  4.27327730e-04,  2.23498722e-03, -3.44635831e-04,  1.00409344e-03,  2.43002578e-04,  5.51359786e-04,  9.60882695e-04,  2.90826520e-05,  3.67937580e-04, -1.05259285e-04, -5.80608976e-05, -1.20373130e-04,  2.14313077e-05, -2.46529380e-04,  4.79140981e-05, -2.40324925e-06,  7.33948618e-05, -1.06283391e-04, -2.59366807e-05, -1.57749411e-04, -1.10661149e-05, -7.32169474e-06, -1.32354195e-04])
+    per_coef_std = np.array([0.19366595, 0.13481042, 0.12510094, 0.13810773, 0.12710623, 0.11857963, 0.01354882, 0.01217443, 0.01309844, 0.012926  , 0.01303048, 0.01326259, 0.01199164, 0.01236033, 0.0126209 , 0.00339288, 0.00331109, 0.00333396, 0.00345094, 0.0033553 , 0.00338018, 0.00340034, 0.00342043, 0.00337105, 0.00337168, 0.00328506, 0.0033479 , 0.00332702])
+
+    vec_mean = np.repeat(per_coef_mean, 7)
+    vec_std = np.repeat(per_coef_std, 7)
+
     def _get_from_nifti(self, volume_id):
         def load_nifti_as_tensor(nifti_file):
             nifti = nib.load(nifti_file)
@@ -104,9 +110,12 @@ class TractoinfernoDataset(Dataset):
         self.num_vectors = len(self.h5_file['vectors'])
 
     def __getitem__(self, i):
+        x = self.h5_file['vectors'][i]
+        x = (x - self.vec_mean) / self.vec_std  # TODO perform normalization once during preprocessing?
+        y = self.h5_file['sites'][i]
         return (
-            torch.from_numpy(self.h5_file['vectors'][i]),
-            torch.tensor(self.h5_file['sites'][i])
+            torch.from_numpy(x),
+            torch.tensor(y)
         )
 
     def __len__(self):
