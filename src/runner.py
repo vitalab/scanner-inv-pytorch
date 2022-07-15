@@ -23,7 +23,8 @@ parser.add_argument("--debug", action="store_true")
 parser.add_argument("--cpu", action="store_true")
 parser.add_argument("--optuna_study", default=None)
 parser.add_argument("--optuna_db", default='optuna_db.sqlite')
-parser.add_argument("--optuna_trials", default=1)
+parser.add_argument("--optuna_trials", default=1, type=int)
+parser.add_argument("--epochs", default=1000, type=int)
 
 
 args = parser.parse_args()
@@ -36,7 +37,7 @@ else:
 save_path=args.save_path
 
 default_hparams = {
-    'n_epochs': 1,
+    'n_epochs': args.epochs,
     'n_adv_per_enc': 1,
     'burnin_epochs': 1,
     'LR': 1e-4,
