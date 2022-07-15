@@ -30,6 +30,19 @@ else:
 
 save_path=args.save_path
 
+default_hparams = {
+    'n_epochs': 10000,
+    'n_adv_per_enc': 1,
+    'burnin_epochs': 1,
+    'LR': 1e-4,
+    'adv_LR': 1e-4,
+    'batch_size': 128,
+    'save_freq': 1,
+    'n_sh_coeff': 1 if args.debug else 28,
+    'dim_z': 32,
+    'num_sites': 6,
+}
+
 default_loss_weights = {
     "recon" : 1.0,
     "prior" : 1.0,
@@ -38,36 +51,24 @@ default_loss_weights = {
     "adv" : 10.0
 }
 
-def train(
-    n_epochs = 10000,
-    n_adv_per_enc = 1, #critic index
-    burnin_epochs=1, #n_epochs for the adversary
-    LR=1e-4,
-    adv_LR=1e-4,
-    batch_size=128,
-    save_freq=1,
-    n_sh_coeff = 1 if args.debug else 28,
-    dim_z = 32,
-    num_sites = 6,
-    loss_weights = None
-):
-    if loss_weights is None:
-        loss_weights = default_loss_weights.copy()
+def train(hparams, loss_weights):
+    hparams = hparams.copy()
+    loss_weights = loss_weights.copy()
 
     # FIXME add command line arg for dataset path
-    train_dataset = TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full'), 'trainset', n_sh_coeff, debug=args.debug)
-    valid_dataset = TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full'), 'validset', n_sh_coeff, debug=args.debug)
+    train_dataset = TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full'), 'trainset', hparams['n_sh_coeff'], debug=args.debug)
+    valid_dataset = TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full'), 'validset', hparams['n_sh_coeff'], debug=args.debug)
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=batch_size,
+        batch_size=hparams['batch_size'],
         shuffle=False,  # Do not shuffle, the dataset has been shuffled. shuffle=True is much slower.
         pin_memory=True,
         num_workers=4
     )
     valid_loader = torch.utils.data.DataLoader(
         valid_dataset,
-        batch_size=batch_size,
+        batch_size=hparams['batch_size'],
         shuffle=False,
         pin_memory=True,
         num_workers=4
@@ -76,10 +77,10 @@ def train(
     center_vox_func = None
 
     #vec_size = 322
-    vec_size = n_sh_coeff * 7
+    vec_size = hparams['n_sh_coeff'] * 7
 
-    enc_obj = arch.encoder( vec_size, dim_z )
-    dec_obj = arch.decoder( dim_z, vec_size, num_sites )
+    enc_obj = arch.encoder( vec_size, hparams['dim_z'] )
+    dec_obj = arch.decoder( hparams['dim_z'], vec_size, hparams['num_sites'] )
     adv_obj = arch.adv( vec_size, 1 )
 
     enc_obj.to(device)
@@ -87,21 +88,12 @@ def train(
     adv_obj.to(device)
 
     optimizer = torch.optim.Adam(
-        list(enc_obj.parameters()) + list(dec_obj.parameters()), lr=LR
+        list(enc_obj.parameters()) + list(dec_obj.parameters()), lr=hparams['LR']
     )
-    adv_optimizer = torch.optim.Adam(adv_obj.parameters(), lr=adv_LR)
+    adv_optimizer = torch.optim.Adam(adv_obj.parameters(), lr=hparams['adv_LR'])
 
     comet_experiment = comet_ml.Experiment(project_name='harmon_moyer')
-    comet_experiment.log_parameters({
-        'n_adv_per_enc': n_adv_per_enc,
-        'burnin_epochs': burnin_epochs,
-        'LR': LR,
-        'adv_LR': adv_LR,
-        'batch_size': batch_size,
-        'save_freq': save_freq,
-        'n_sh_coeff': n_sh_coeff,
-        'dim_z': dim_z
-    })
+    comet_experiment.log_parameters(hparams)
     comet_experiment.log_parameters(loss_weights, prefix='loss_weight')
 
     print('Training starts')
@@ -113,7 +105,7 @@ def train(
     train_metrics = {name: torchmetrics.MeanMetric(nan_strategy='error') for name in gen_step_loss_names + ['loss_adv_d']}
     valid_metrics = {name: torchmetrics.MeanMetric(nan_strategy='error') for name in gen_step_loss_names + ['loss_adv_d']}
 
-    for epoch in range(n_epochs):
+    for epoch in range(hparams['n_epochs']):
 
         # Training epoch
         for d_idx, batch in enumerate(tqdm(train_loader, desc=f'Train epoch {epoch}')):
@@ -123,11 +115,11 @@ def train(
             x = x.to(device).type(torch.float32)
             c = c.to(device)
 
-            if epoch < burnin_epochs or d_idx % (n_adv_per_enc+1) > 0:
+            if epoch < hparams['burnin_epochs'] or d_idx % (hparams['n_adv_per_enc']+1) > 0:
                 adv_optimizer.zero_grad()
 
                 loss = losses.adv_training_step(
-                    enc_obj, dec_obj, adv_obj, x, c, num_sites=num_sites
+                    enc_obj, dec_obj, adv_obj, x, c, num_sites=hparams['num_sites']
                 )
 
                 loss.backward(retain_graph=True)
@@ -140,7 +132,7 @@ def train(
                 optimizer.zero_grad()
 
                 loss, separate_losses = losses.enc_dec_training_step(
-                    enc_obj, dec_obj, adv_obj, x, c, loss_weights, dim_z, num_sites=num_sites
+                    enc_obj, dec_obj, adv_obj, x, c, loss_weights, hparams['dim_z'], num_sites=hparams['num_sites']
                 )
 
                 loss.backward(retain_graph=True)
@@ -173,7 +165,7 @@ def train(
                 x = x.to(device).type(torch.float32)
                 c = c.to(device)
                 loss, separate_losses = losses.enc_dec_training_step(
-                    enc_obj, dec_obj, adv_obj, x, c, loss_weights, dim_z, num_sites=num_sites
+                    enc_obj, dec_obj, adv_obj, x, c, loss_weights, hparams['dim_z'], num_sites=hparams['num_sites']
                 )
                 for name, l in zip(gen_step_loss_names, separate_losses):
                     try:
@@ -191,7 +183,7 @@ def train(
         for m in valid_metrics.values():
             m.reset()
 
-        if save_path is not None and epoch % save_freq == 0:
+        if save_path is not None and epoch % hparams['save_freq'] == 0:
             Path(save_path).mkdir(exist_ok=True)
             torch.save(
                 {
@@ -204,4 +196,4 @@ def train(
 
 
 if __name__ == '__main__':
-    train()
+    train(default_hparams, default_loss_weights)
