@@ -7,6 +7,7 @@ import arch
 import losses
 import torchmetrics
 from tqdm import tqdm
+import optuna
 
 from src.tractoinferno import TractoinfernoDataset
 
@@ -20,6 +21,10 @@ parser.add_argument("--hcp-zip-path")
 parser.add_argument("--save-path", default='./checkpoints')
 parser.add_argument("--debug", action="store_true")
 parser.add_argument("--cpu", action="store_true")
+parser.add_argument("--optuna_study", default=None)
+parser.add_argument("--optuna_db", default='optuna_db.sqlite')
+parser.add_argument("--optuna_trials", default=1)
+
 
 args = parser.parse_args()
 
@@ -31,7 +36,7 @@ else:
 save_path=args.save_path
 
 default_hparams = {
-    'n_epochs': 10000,
+    'n_epochs': 1,
     'n_adv_per_enc': 1,
     'burnin_epochs': 1,
     'LR': 1e-4,
@@ -48,7 +53,7 @@ default_loss_weights = {
     "prior" : 1.0,
     "projection" : 1.0,
     "marg" : 0.01,
-    "adv" : 10.0
+    "adv" : 0.0  # 10.0
 }
 
 def train(hparams, loss_weights):
@@ -105,6 +110,8 @@ def train(hparams, loss_weights):
     train_metrics = {name: torchmetrics.MeanMetric(nan_strategy='error') for name in gen_step_loss_names + ['loss_adv_d']}
     valid_metrics = {name: torchmetrics.MeanMetric(nan_strategy='error') for name in gen_step_loss_names + ['loss_adv_d']}
 
+    valid_recon_loss = None
+
     for epoch in range(hparams['n_epochs']):
 
         # Training epoch
@@ -115,7 +122,7 @@ def train(hparams, loss_weights):
             x = x.to(device).type(torch.float32)
             c = c.to(device)
 
-            if epoch < hparams['burnin_epochs'] or d_idx % (hparams['n_adv_per_enc']+1) > 0:
+            if False:  # epoch < hparams['burnin_epochs'] or d_idx % (hparams['n_adv_per_enc']+1) > 0:
                 adv_optimizer.zero_grad()
 
                 loss = losses.adv_training_step(
@@ -175,6 +182,7 @@ def train(hparams, loss_weights):
                         raise
 
         # Valid epoch end
+        valid_recon_loss = valid_metrics['loss_recon'].compute()
         comet_experiment.log_metrics(
             {name: m.compute() for name, m in valid_metrics.items() if m._update_called},
             epoch=epoch,
@@ -194,6 +202,33 @@ def train(hparams, loss_weights):
                 f"{save_path}/ckpt_{epoch}.pth"
             )
 
+    return valid_recon_loss
+
+
+def main():
+    study_name = args.optuna_study
+    study = optuna.create_study(storage='sqlite:///' + args.optuna_db, study_name=study_name, direction='maximize',
+                                load_if_exists=True)
+
+    def objective(trial: optuna.Trial):
+        hparams = default_hparams.copy()
+        hparams.update({
+            'LR': trial.suggest_loguniform('lr', 1e-5, 1e-3),  # 1e-4,
+            'adv_LR': trial.suggest_loguniform('lr_adv', 1e-5, 1e-3),
+            'dim_z': trial.suggest_categorical('dim_z', [12, 16, 24, 32])
+        })
+        loss_weights = default_loss_weights.copy()
+        loss_weights.update({
+            "prior": trial.suggest_loguniform('lw_prior', 1e-1, 1.0),  # 1.0,
+            "marg": trial.suggest_loguniform('lw_marg', 1e-3, 1e-1)  #0.01
+        })
+        valid_recon_loss = train(hparams, loss_weights)
+        to_maximize = loss_weights['prior'] + loss_weights['marg']
+        to_minimize = valid_recon_loss
+        return to_maximize - to_minimize
+
+    study.optimize(objective, n_trials=args.optuna_trials)
+
 
 if __name__ == '__main__':
-    train(default_hparams, default_loss_weights)
+    main()
