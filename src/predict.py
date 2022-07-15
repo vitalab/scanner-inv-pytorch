@@ -49,8 +49,10 @@ def predict_volume(image, mask, target_site, encoder, decoder):
 
     # Normalize vectors
     # Note: it would be more efficient to transform the voxels before they are put into vectors (but only WM voxels)
-    vectors -= TractoinfernoDataset.vec_mean[None, :]
-    vectors /= TractoinfernoDataset.vec_std[None, :]
+    vec_mean = np.repeat(TractoinfernoDataset.per_coef_mean, 7)
+    vec_std = np.repeat(TractoinfernoDataset.per_coef_std, 7)
+    vectors -= vec_mean[None, :]
+    vectors /= vec_std[None, :]
 
     print("  Running model")
     # Predict -- reconstruct voxels into target site
