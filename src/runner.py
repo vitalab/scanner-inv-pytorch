@@ -10,11 +10,6 @@ from tqdm import tqdm
 
 from src.tractoinferno import TractoinfernoDataset
 
-if torch.cuda.is_available():
-    device = 'cuda:0'
-else:
-    device = 'cpu'
-
 import argparse
 
 parser = argparse.ArgumentParser(description=\
@@ -24,8 +19,14 @@ parser = argparse.ArgumentParser(description=\
 parser.add_argument("--hcp-zip-path")
 parser.add_argument("--save-path", default='./checkpoints')
 parser.add_argument("--debug", action="store_true")
+parser.add_argument("--cpu", action="store_true")
 
 args = parser.parse_args()
+
+if not args.cpu and torch.cuda.is_available():
+    device = 'cuda:0'
+else:
+    device = 'cpu'
 
 save_path=args.save_path
 
