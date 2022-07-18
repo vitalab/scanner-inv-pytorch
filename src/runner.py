@@ -87,7 +87,6 @@ use_adv = True
 loss_weights = {
     "recon" : 1.0,
     "prior" : 1.0,
-    "projection" : 1.0,
     "marg" : 0.01,
     "adv_g" : 10.0 if use_adv else 0.0
 }
@@ -131,20 +130,51 @@ for epoch in range(n_epochs):
                 enc_obj, dec_obj, adv_obj, x, c, num_sites=num_sites
             )
 
-            loss.backward(retain_graph=True)
+            loss.backward()
             adv_optimizer.step()
 
             train_metrics['loss_adv_d'].update(loss.item())
             comet_experiment.log_metric('train_loss_adv_d', loss.item(), step=global_step)
         else:
 
+            def forward_pass(tmp_loss_weights):
+                loss, separate_losses, z_mu, x_recon = losses.enc_dec_training_step(
+                    enc_obj, dec_obj, adv_obj, x, c, tmp_loss_weights, dim_z, num_sites=num_sites
+                )
+                return loss, separate_losses, z_mu, x_recon
+
+            # Inspect gradients for each loss term
+            dmu = {}
+            drecon = {}
+            for loss_name in loss_weights.keys():
+                # Zero out all loss weights, except one
+                tmp_loss_weights = {name: value if name == loss_name else 0.0 for name, value in loss_weights.items()}
+                # Run forward pass
+                optimizer.zero_grad()
+                loss, _, z_mu, x_recon = forward_pass(tmp_loss_weights)
+                z_mu.retain_grad()
+                x_recon.retain_grad()
+                loss.backward()
+                # Store gradient sums
+                dmu[loss_name] = torch.linalg.norm(z_mu.grad)  # z_mu.grad.abs().sum()
+                drecon[loss_name] = torch.linalg.norm(x_recon.grad)  # x_recon.grad.abs().sum()
+            # Assert truths
+            assert drecon['marg'] == 0.0
+            assert drecon['prior'] == 0.0
+            # Log values of interest
+            comet_experiment.log_metrics({
+                'dmu_dlrecon': dmu['recon'],
+                'dmu_dlprior': dmu['prior'],
+                'dmu_dlmarg': dmu['marg'],
+                'dmu_dladv': dmu['adv_g'],
+                'dxrecon_dlrecon': drecon['recon'],
+                'dxrecon_dladv': drecon['adv_g']
+            })
+
+            # Run real forward pass and update
             optimizer.zero_grad()
-
-            loss, separate_losses = losses.enc_dec_training_step(
-                enc_obj, dec_obj, adv_obj, x, c, loss_weights, dim_z, num_sites=num_sites
-            )
-
-            loss.backward(retain_graph=True)
+            loss, separate_losses, _, _ = forward_pass(loss_weights)
+            loss.backward()
             optimizer.step()
 
             for name, l in zip(gen_step_loss_names, separate_losses):
@@ -173,7 +203,7 @@ for epoch in range(n_epochs):
             x, c = batch
             x = x.to(device).type(torch.float32)
             c = c.to(device)
-            loss, separate_losses = losses.enc_dec_training_step(
+            loss, separate_losses, _, _ = losses.enc_dec_training_step(
                 enc_obj, dec_obj, adv_obj, x, c, loss_weights, dim_z, num_sites=num_sites
             )
             for name, l in zip(gen_step_loss_names, separate_losses):

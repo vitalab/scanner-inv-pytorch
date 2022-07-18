@@ -71,7 +71,7 @@ def enc_dec_training_step( encoder, decoder, adv, x, c, loss_weights, dim_z, num
 
     #print(loss)
 
-    return loss, (recon_loss, kl_loss, marg_loss, adv_loss)
+    return loss, (recon_loss, kl_loss, marg_loss, adv_loss), z_mu, x_recon
 
 
 def adv_training_step( encoder, decoder, adv, x, c, num_sites ):
