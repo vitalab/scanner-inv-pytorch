@@ -67,7 +67,7 @@ def enc_dec_training_step( encoder, decoder, adv, x, c, loss_weights, dim_z, num
     loss = loss_weights["recon"] * recon_loss + \
         loss_weights["prior"] * kl_loss + \
         loss_weights["marg"] * marg_loss + \
-        ( - loss_weights["adv"] * adv_loss )
+        ( - loss_weights["adv_g"] * adv_loss )
 
     #print(loss)
 

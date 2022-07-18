@@ -83,12 +83,13 @@ optimizer = torch.optim.Adam(
 )
 adv_optimizer = torch.optim.Adam(adv_obj.parameters(), lr=adv_LR)
 
+use_adv = True
 loss_weights = {
     "recon" : 1.0,
     "prior" : 1.0,
     "projection" : 1.0,
     "marg" : 0.01,
-    "adv" : 10.0
+    "adv_g" : 10.0 if use_adv else 0.0
 }
 
 comet_experiment = comet_ml.Experiment(project_name='harmon_moyer')
@@ -123,7 +124,7 @@ for epoch in range(n_epochs):
         x = x.to(device).type(torch.float32)
         c = c.to(device)
 
-        if epoch < burnin_epochs or d_idx % (n_adv_per_enc+1) > 0:
+        if use_adv and (epoch < burnin_epochs or d_idx % (n_adv_per_enc+1) > 0):
             adv_optimizer.zero_grad()
             
             loss = losses.adv_training_step(
