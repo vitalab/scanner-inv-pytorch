@@ -64,12 +64,11 @@ def enc_dec_training_step( encoder, decoder, adv, x, c, loss_weights, dim_z, num
     #adv_loss = torch.nn.BCELoss(adv_likelihood, adv_gt)
     adv_loss = F.binary_cross_entropy( adv_likelihood, adv_gt )
 
-    loss = loss_weights["recon"] * recon_loss + \
-        loss_weights["prior"] * kl_loss + \
-        loss_weights["marg"] * marg_loss + \
-        ( - loss_weights["adv_g"] * adv_loss )
-
-    #print(loss)
+    recon_loss *= loss_weights['recon']
+    kl_loss *= loss_weights['prior']
+    marg_loss *= loss_weights['marg']
+    adv_loss *= loss_weights['adv_g']
+    loss = recon_loss + kl_loss + marg_loss - adv_loss
 
     return loss, (recon_loss, kl_loss, marg_loss, adv_loss), z_mu, x_recon
 
