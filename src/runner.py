@@ -163,12 +163,12 @@ for epoch in range(n_epochs):
             assert drecon['prior'] == 0.0
             # Log values of interest
             comet_experiment.log_metrics({
-                'dmu_dlrecon': dmu['recon'],
-                'dmu_dlprior': dmu['prior'],
-                'dmu_dlmarg': dmu['marg'],
-                'dmu_dladv': dmu['adv_g'],
-                'dxrecon_dlrecon': drecon['recon'],
-                'dxrecon_dladv': drecon['adv_g']
+                'dlrecon_dmu': dmu['recon'],
+                'dlprior_dmu': dmu['prior'],
+                'dlmarg_dmu': dmu['marg'],
+                'dladv_dmu': dmu['adv_g'],
+                'dlrecon_dxrecon': drecon['recon'],
+                'dladv_dxrecon': drecon['adv_g']
             })
 
             # Run real forward pass and update
