@@ -24,6 +24,7 @@ parser.add_argument("--cpu", action="store_true")
 parser.add_argument("--epochs", type=int, default=20)
 parser.add_argument("--burnin_eps", type=int, default=1)
 parser.add_argument("--lwreconfactor", type=float, default=1.0)
+parser.add_argument("--use_adv", choices=['y', 'n'], default='y')
 
 args = parser.parse_args()
 
@@ -87,7 +88,7 @@ optimizer = torch.optim.Adam(
 )
 adv_optimizer = torch.optim.Adam(adv_obj.parameters(), lr=adv_LR)
 
-use_adv = True
+use_adv = args.use_adv == 'y'
 loss_weights = {
     "recon" : 1.0,
     "prior" : 1.0 / args.lwreconfactor,
