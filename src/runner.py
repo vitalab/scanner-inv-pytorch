@@ -100,6 +100,9 @@ comet_experiment = comet_ml.Experiment(project_name='harmon_moyer')
 comet_experiment.log_parameters({
     'n_adv_per_enc': n_adv_per_enc,
     'burnin_epochs': burnin_epochs,
+    'epochs': args.epochs,
+    'lwreconfactor': args.lwreconfactor,
+    'use_adv': use_adv,
     'LR': LR,
     'adv_LR': adv_LR,
     'batch_size': batch_size,
