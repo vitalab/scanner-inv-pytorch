@@ -146,6 +146,8 @@ for epoch in range(n_epochs):
             # Inspect gradients for each loss term
             dmu = {}
             drecon = {}
+            grad_w_encoder = {}
+            grad_w_decoder = {}
             for loss_name in loss_weights.keys():
                 # Zero out all loss weights, except one
                 tmp_loss_weights = {name: value if name == loss_name else 0.0 for name, value in loss_weights.items()}
@@ -155,12 +157,18 @@ for epoch in range(n_epochs):
                 z_mu.retain_grad()
                 x_recon.retain_grad()
                 loss.backward()
-                # Store gradient sums
-                dmu[loss_name] = torch.linalg.norm(z_mu.grad)  # z_mu.grad.abs().sum()
-                drecon[loss_name] = torch.linalg.norm(x_recon.grad)  # x_recon.grad.abs().sum()
-            # Assert truths
-            assert drecon['marg'] == 0.0
-            assert drecon['prior'] == 0.0
+
+                # === Store gradient norms
+                # At output of encoder
+                dmu[loss_name] = torch.linalg.norm(z_mu.grad)
+                # At output of decoder
+                drecon[loss_name] = torch.linalg.norm(x_recon.grad)
+                # On weights of encoder
+                dw_enc = torch.cat([p.grad.flatten() for p in enc_obj.parameters()])
+                grad_w_encoder[loss_name] = torch.linalg.norm(dw_enc)
+                # On weights of decoder
+                dw_dec = torch.cat([p.grad.flatten() for p in dec_obj.parameters()])
+                grad_w_decoder[loss_name] = torch.linalg.norm(dw_dec)
             # Log values of interest
             comet_experiment.log_metrics({
                 'dlrecon_dmu': dmu['recon'],
@@ -168,7 +176,14 @@ for epoch in range(n_epochs):
                 'dlmarg_dmu': dmu['marg'],
                 'dladv_dmu': dmu['adv_g'],
                 'dlrecon_dxrecon': drecon['recon'],
-                'dladv_dxrecon': drecon['adv_g']
+                'dladv_dxrecon': drecon['adv_g'],
+
+                'dlrecon_dwenc': grad_w_encoder['recon'],
+                'dlprior_dwenc': grad_w_encoder['prior'],
+                'dlmarg_dwenc': grad_w_encoder['marg'],
+                'dladv_dwenc': grad_w_encoder['adv_g'],
+                'dlrecon_dwdec': grad_w_decoder['recon'],
+                'dladv_dwdec': grad_w_decoder['adv_g'],
             })
 
             # Run real forward pass and update
