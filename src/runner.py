@@ -20,6 +20,9 @@ parser.add_argument("--hcp-zip-path")
 parser.add_argument("--save-path", default='./checkpoints')
 parser.add_argument("--debug", action="store_true")
 parser.add_argument("--cpu", action="store_true")
+parser.add_argument("--epochs", type=int, default=20)
+parser.add_argument("--burnin_eps", type=int, default=1)
+parser.add_argument("--lwreconfactor", type=float, default=1.0)
 
 args = parser.parse_args()
 
@@ -30,9 +33,9 @@ else:
 
 save_path=args.save_path
 
-n_epochs = 1000
+n_epochs = args.epochs
 n_adv_per_enc = 1 #critic index
-burnin_epochs=1 #n_epochs for the adversary
+burnin_epochs=args.burnin_eps #n_epochs for the adversary
 LR=1e-4
 adv_LR=1e-4
 batch_size=128
@@ -86,9 +89,9 @@ adv_optimizer = torch.optim.Adam(adv_obj.parameters(), lr=adv_LR)
 use_adv = True
 loss_weights = {
     "recon" : 1.0,
-    "prior" : 1.0,
-    "marg" : 0.01,
-    "adv_g" : 10.0 if use_adv else 0.0
+    "prior" : 1.0 / args.lwreconfactor,
+    "marg" : 0.01 / args.lwreconfactor,
+    "adv_g" : 10.0 / args.lwreconfactor if use_adv else 0.0
 }
 
 comet_experiment = comet_ml.Experiment(project_name='harmon_moyer')
