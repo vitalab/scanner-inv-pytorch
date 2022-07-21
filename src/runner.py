@@ -16,6 +16,7 @@ parser = argparse.ArgumentParser(description=\
     "runs inv-rep auto-encoder training"
 )
 
+parser.add_argument("data_path", type=Path)
 parser.add_argument("--hcp-zip-path")
 parser.add_argument("--save-path", default='./checkpoints')
 parser.add_argument("--debug", action="store_true")
@@ -50,8 +51,8 @@ scan_type_map = {
 }
 
 # FIXME add command line arg for dataset path
-train_dataset = TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full'), 'trainset', n_sh_coeff, debug=args.debug)
-valid_dataset = TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full'), 'validset', n_sh_coeff, debug=args.debug)
+train_dataset = TractoinfernoDataset(args.data_path, 'trainset', n_sh_coeff, debug=args.debug)
+valid_dataset = TractoinfernoDataset(args.data_path, 'validset', n_sh_coeff, debug=args.debug)
 
 train_loader = torch.utils.data.DataLoader(
     train_dataset,
