@@ -30,13 +30,13 @@ else:
 
 save_path=args.save_path
 
-n_epochs = 10000
+n_epochs = 1000
 n_adv_per_enc = 1 #critic index
 burnin_epochs=1 #n_epochs for the adversary
 LR=1e-4
 adv_LR=1e-4
 batch_size=128
-save_freq=1
+save_freq=10
 n_sh_coeff = 1 if args.debug else 28
 dim_z = 32
 num_sites = 6
@@ -245,5 +245,5 @@ for epoch in range(n_epochs):
                 "dec":dec_obj.state_dict(),
                 "adv":adv_obj.state_dict()
             },
-            f"{save_path}/ckpt_{epoch}.pth"
+            f"{save_path}/ckpt__{comet_experiment.name}__{epoch}.pth"
         )
