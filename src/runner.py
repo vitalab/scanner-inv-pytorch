@@ -202,3 +202,23 @@ for epoch in range(n_epochs):
             },
             f"{save_path}/ckpt_{epoch}.pth"
         )
+
+# After training, predict z for full train/val set
+print('Make (z, site) pairs')
+
+
+def make_zs_pairs(loader):
+    pairs = []
+    for i, batch in enumerate(tqdm(loader)):
+        x, s = batch
+        x = x.to(device).type(torch.float32)
+        s = s.to(device)
+        z_mu, _ = enc_obj.forward(x)
+        pairs.append((z_mu.detach().numpy(), s))
+    return pairs
+
+
+filename = f"{save_path}/trainval_zs__{comet_experiment.name}__{epoch}.pth"
+train_zs = make_zs_pairs(train_loader)
+valid_zs = make_zs_pairs(valid_loader)
+torch.save({'train_zs': train_zs, 'valid_zs': valid_zs}, filename)
