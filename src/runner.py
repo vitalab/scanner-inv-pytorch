@@ -24,6 +24,10 @@ parser.add_argument("--cpu", action="store_true")
 parser.add_argument("--epochs", type=int, default=20)
 parser.add_argument("--burnin_eps", type=int, default=1)
 parser.add_argument("--use_adv", choices=['y', 'n'], default='y')
+parser.add_argument("--lw_recon", default=1.0)
+parser.add_argument("--lw_prior", default=1.0)
+parser.add_argument("--lw_marg", default=0.01)
+parser.add_argument("--lw_adv_g", default=10.0)
 
 args = parser.parse_args()
 
@@ -89,10 +93,10 @@ adv_optimizer = torch.optim.Adam(adv_obj.parameters(), lr=adv_LR)
 
 use_adv = args.use_adv == 'y'
 loss_weights = {
-    "recon" : 1.0,
-    "prior" : 1.0,
-    "marg" : 0.01,
-    "adv_g" : 10.0 if use_adv else 0.0
+    "recon" : args.lw_recon,
+    "prior" : args.lw_prior,
+    "marg" : args.lw_marg,
+    "adv_g" : args.lw_adv_g if use_adv else 0.0
 }
 
 comet_experiment = comet_ml.Experiment(project_name='harmon_moyer')
