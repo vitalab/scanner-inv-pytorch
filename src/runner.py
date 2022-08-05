@@ -16,10 +16,14 @@ parser = argparse.ArgumentParser(description=\
     "runs inv-rep auto-encoder training"
 )
 
+parser.add_argument("data_path", type=Path)
 parser.add_argument("--hcp-zip-path")
 parser.add_argument("--save-path", default='./checkpoints')
 parser.add_argument("--debug", action="store_true")
 parser.add_argument("--cpu", action="store_true")
+parser.add_argument("--epochs", type=int, default=20)
+parser.add_argument("--burnin_eps", type=int, default=1)
+parser.add_argument("--use_adv", choices=['y', 'n'], default='y')
 
 args = parser.parse_args()
 
@@ -30,13 +34,13 @@ else:
 
 save_path=args.save_path
 
-n_epochs = 10000
+n_epochs = args.epochs
 n_adv_per_enc = 1 #critic index
-burnin_epochs=1 #n_epochs for the adversary
+burnin_epochs=args.burnin_eps #n_epochs for the adversary
 LR=1e-4
 adv_LR=1e-4
 batch_size=128
-save_freq=1
+save_interval=10
 n_sh_coeff = 1 if args.debug else 28
 dim_z = 32
 num_sites = 6
@@ -47,8 +51,8 @@ scan_type_map = {
 }
 
 # FIXME add command line arg for dataset path
-train_dataset = TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full'), 'trainset', n_sh_coeff, debug=args.debug)
-valid_dataset = TractoinfernoDataset(Path('/home/carl/data/tractoinferno/masked_full'), 'validset', n_sh_coeff, debug=args.debug)
+train_dataset = TractoinfernoDataset(args.data_path, 'trainset', n_sh_coeff, debug=args.debug)
+valid_dataset = TractoinfernoDataset(args.data_path, 'validset', n_sh_coeff, debug=args.debug)
 
 train_loader = torch.utils.data.DataLoader(
     train_dataset,
@@ -83,11 +87,10 @@ optimizer = torch.optim.Adam(
 )
 adv_optimizer = torch.optim.Adam(adv_obj.parameters(), lr=adv_LR)
 
-use_adv = True
+use_adv = args.use_adv == 'y'
 loss_weights = {
     "recon" : 1.0,
     "prior" : 1.0,
-    "projection" : 1.0,
     "marg" : 0.01,
     "adv_g" : 10.0 if use_adv else 0.0
 }
@@ -96,10 +99,12 @@ comet_experiment = comet_ml.Experiment(project_name='harmon_moyer')
 comet_experiment.log_parameters({
     'n_adv_per_enc': n_adv_per_enc,
     'burnin_epochs': burnin_epochs,
+    'epochs': args.epochs,
+    'use_adv': use_adv,
     'LR': LR,
     'adv_LR': adv_LR,
     'batch_size': batch_size,
-    'save_freq': save_freq,
+    'save_freq': save_interval,
     'n_sh_coeff': n_sh_coeff,
     'dim_z': dim_z
 })
@@ -131,7 +136,7 @@ for epoch in range(n_epochs):
                 enc_obj, dec_obj, adv_obj, x, c, num_sites=num_sites
             )
 
-            loss.backward(retain_graph=True)
+            loss.backward()
             adv_optimizer.step()
 
             train_metrics['loss_adv_d'].update(loss.item())
@@ -192,7 +197,7 @@ for epoch in range(n_epochs):
     for m in valid_metrics.values():
         m.reset()
 
-    if save_path is not None and epoch % save_freq == 0:
+    if save_path is not None and epoch % save_interval == 0:
         Path(save_path).mkdir(exist_ok=True)
         torch.save(
             {
@@ -200,7 +205,7 @@ for epoch in range(n_epochs):
                 "dec":dec_obj.state_dict(),
                 "adv":adv_obj.state_dict()
             },
-            f"{save_path}/ckpt_{epoch}.pth"
+            f"{save_path}/ckpt__{comet_experiment.name}__{epoch}.pth"
         )
 
 # After training, predict z for full train/val set
