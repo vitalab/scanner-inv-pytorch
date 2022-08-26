@@ -13,7 +13,7 @@ from torchmetrics import Accuracy
 
 
 class SitePredictorSystem(pl.LightningModule):
-    def __init__(self, code_dim, num_sites):
+    def __init__(self, code_dim, num_sites, weight_decay=0):
         super().__init__()
         self.model = nn.Sequential(
             nn.Linear(code_dim, 512),
@@ -24,6 +24,7 @@ class SitePredictorSystem(pl.LightningModule):
             nn.ReLU(),
             nn.Linear(128, num_sites)
         )
+        self.weight_decay = weight_decay
 
         self.accu_train = Accuracy()
         self.accu_valid = Accuracy()
@@ -54,7 +55,7 @@ class SitePredictorSystem(pl.LightningModule):
         self.log('accu_valid', self.accu_valid, on_step=False, on_epoch=True)
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3, weight_decay=self.weight_decay)
         return optimizer
 
 
@@ -89,7 +90,7 @@ def train_posthoc_adv(zs_file_path: Path, args):
     valid_dataloader = DataLoader(valid_posthoc_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.workers)
 
     # init adversary model
-    adversary = SitePredictorSystem(code_dim, args.n_sites)
+    adversary = SitePredictorSystem(code_dim, args.n_sites, args.weight_decay)
 
     # Logger
     logger = CometLogger(project_name='harmon-moyer', display_summary_level=0,
@@ -157,6 +158,7 @@ def main():
     ap.add_argument('--gpus', default=0)
     ap.add_argument('-e', '--max_epochs', type=int, default=20)
     ap.add_argument('--batch_size', type=int, default=32)
+    ap.add_argument('--weight_decay', type=float, default=0.0)
     ap.add_argument('--workers', type=int, default=4)
     ap.add_argument('--no_comet', action='store_true')
     ap.add_argument('--root_dir', type=str)
