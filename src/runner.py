@@ -17,7 +17,6 @@ parser = argparse.ArgumentParser(description=\
 )
 
 parser.add_argument("data_path", type=Path)
-parser.add_argument("--hcp-zip-path")
 parser.add_argument("--save-path", default='./checkpoints')
 parser.add_argument("--debug", action="store_true")
 parser.add_argument("--cpu", action="store_true")
@@ -223,11 +222,11 @@ def make_zs_pairs(loader):
         x = x.to(device).type(torch.float32)
         s = s.to(device)
         z_mu, _ = enc_obj.forward(x)
-        pairs.append((z_mu.detach().numpy(), s))
+        pairs.append((z_mu.detach().cpu(), s.cpu()))
     return pairs
 
 
-filename = f"{save_path}/trainval_zs__{comet_experiment.name}__{epoch}.pth"
+filename = f"{save_path}/trainval_zs__{comet_experiment.id}__{epoch}.pth"
 train_zs = make_zs_pairs(train_loader)
 valid_zs = make_zs_pairs(valid_loader)
 torch.save({'train_zs': train_zs, 'valid_zs': valid_zs}, filename)
