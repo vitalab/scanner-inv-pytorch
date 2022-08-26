@@ -102,7 +102,7 @@ def train_posthoc_adv(zs_file_path: Path, args):
     # Initialize a trainer
     trainer = pl.Trainer(
         gpus=args.gpus,
-        max_epochs=100,
+        max_epochs=args.max_epochs,
         logger=logger,
         default_root_dir=args.root_dir
     )
