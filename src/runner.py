@@ -167,8 +167,10 @@ for epoch in range(n_epochs):
         global_step += 1
 
     # Epoch end
+    train_metric_values = {name: m.compute() for name, m in train_metrics.items() if m._update_called}
+    train_metric_values['mse'] = train_metric_values['loss_recon'] / loss_weights['recon']
     comet_experiment.log_metrics(
-        {name: m.compute() for name, m in train_metrics.items() if m._update_called},
+        train_metric_values,
         epoch=epoch,
         prefix='ep_train'
     )
@@ -192,8 +194,10 @@ for epoch in range(n_epochs):
                     raise
 
     # Valid epoch end
+    valid_metric_values = {name: m.compute() for name, m in valid_metrics.items() if m._update_called}
+    valid_metric_values['mse'] = valid_metric_values['loss_recon'] / loss_weights['recon']
     comet_experiment.log_metrics(
-        {name: m.compute() for name, m in valid_metrics.items() if m._update_called},
+        valid_metric_values,
         epoch=epoch,
         prefix='ep_valid'
     )
