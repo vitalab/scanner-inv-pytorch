@@ -97,7 +97,7 @@ def main():
     Config.num_sites = args.num_sites
 
     # Load model
-    print("Loading model")
+    print("Loading model:", args.model_weights)
     checkpoint = torch.load(args.model_weights, map_location='cpu')
     encoder = Encoder(args.vector_size, args.dim_z)
     decoder = Decoder(args.dim_z, args.vector_size, args.num_sites)
@@ -105,7 +105,7 @@ def main():
     decoder.load_state_dict(checkpoint['dec'])
 
     # Load image and mask
-    print("Loading data")
+    print("Loading data:", args.image)
     image, nifti_object = load_nifti_as_tensor(args.image)
     image = torch.movedim(image, -1, 0)  # Move SH dim to the front
     mask, _ = load_nifti_as_tensor(args.mask)
@@ -120,7 +120,7 @@ def main():
     version = Path(args.model_weights).stem
     orig_base_name = Path(args.image).name
     orig_stem = orig_base_name[:-7] if orig_base_name[-7:] == '.nii.gz' else orig_base_name[:-4]
-    out_filename = Path(args.image).parent / f'{orig_stem}_harmonizedTo{args.target_site}_{version}.nii'
+    out_filename = Path(args.image).parent / f'{orig_stem}_harmonizedTo{args.target_site}___{version}.nii'
 
     # Save output
     out_nifti = nib.Nifti1Pair(recon_image, nifti_object.affine, nifti_object.header)
