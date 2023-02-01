@@ -24,8 +24,8 @@ python src/runner.py <TRACTOINFERNO_DATASET_PATH>
 Note that the first time this script is run, the dataset is preprocessed to
 extract the voxel neighborhoods.
 
-To see what hyperparameters/arguments are available, see "Arguments help"
-section below.
+To see what hyperparameters/arguments are available, run
+`python src/runner.py  -h`.
 
 ## How to evaluate
 
