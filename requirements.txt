@@ -1,0 +1,10 @@
+numpy
+scipy
+pandas
+torch
+torchmetrics
+pytorch_lightning
+nibabel
+h5py
+comet_ml
+tqdm

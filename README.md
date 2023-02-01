@@ -1,30 +1,37 @@
+# Harmonization Moyer et al.
 
-Inv Rep (HCP dMRI)
-====
+This repo is based on code by [Moyer et al.](https://onlinelibrary.wiley.com/doi/10.1002/mrm.28243)
+The code was modified to support the TractoInferno dataset. Other changes were
+also needed, as decribed in [this document](https://docs.google.com/document/d/1O8dfMagJZ0Acw-0KBTsfLpLOOMRlr2PzcKOcBIYwxrM).
 
-Usage (running from repo root directory):
+## Setup
+
+Create a virtualenv using `requirements.txt`, and use a virtualenv when
+running the scripts.
+
+`requirement_versions.txt` lists versions of packages that work as of this
+writing.
+
+## How to launch training
+
+Here is how to launch training with default hyperparameters:
+
 ```bash
-
-PYTHONPATH="src/:${PYTHONPATH}" python \
-  src/runner.py \
-    --hcp-zip-path PATH_TO_OUTPUT_OF_DICTDUMP \
-    --save-path params/
-
+export PYTHONPATH=$(pwd)  # As required by original Moyer implementation
+python src/runner.py <TRACTOINFERNO_DATASET_PATH>
 ```
 
-In order to run the data prep script `scripts/dict_dump.sh`, which in turn runs `src/zip_dump.py`, we need a CSV with the following columns:
+Note that the first time this script is run, the dataset is preprocessed to
+extract the voxel neighborhoods.
+
+To see what hyperparameters/arguments are available, see "Arguments help"
+section below.
+
+## How to evaluate
+
+```bash
+python src/posthocadv.py <ZS_FILE>
 ```
-index
-subj_id
-path_1200
-path_mask
-path_7T
-path_1200_bvals
-path_1200_bvecs
-path_7T_bvals
-path_7T_bvecs
-```
 
-
-
-
+where `ZS_FILE` is a file created at the end of training,
+with filename as such: `trainval_zs__{comet_experiment.id}__{epoch}.pth`.

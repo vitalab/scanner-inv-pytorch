@@ -1,0 +1,10 @@
+numpy==1.24.1
+scipy
+pandas==1.5.3
+torch==1.13.1
+torchmetrics==0.11.1
+pytorch_lightning==1.9.0
+nibabel==5.0.0
+h5py==3.8.0
+comet-ml==3.32.0
+tqdm==4.64.1
