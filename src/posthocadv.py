@@ -111,40 +111,7 @@ def train_posthoc_adv(zs_file_path: Path, args):
     trainer.fit(adversary, train_dataloaders=train_dataloader, val_dataloaders=valid_dataloader)
 
     # Log eval metrics in the comet experiment of the cvae training
-    try:
-        existing_exp = comet_ml.ExistingExperiment(experiment_key=trained_cvae_model_id)
-    except ValueError:
-        # TODO remove this eventually
-        # Assuming ValueError: Invalid experiment key
-        # If old code was used, the filename contains the name instead of the ID.
-        name_to_id = {
-            'genetic_seasoning_4914': 'ee6d77c3d3174332aa2ec58863fdc64f',
-            'integral_thrush_9169': 'bb5356f242c94f8f80648c27aef2bfac',
-            'keen_arch_9585': '44de53fe68d44202bf041813df90f09b',
-            'marked_antelope_4111': 'e8c89edcd118437cbe2faecd7d79fbd8',
-            'large_tropics_9452': 'f5f279b7fc3b4e918c261c76dfd77609',
-            'open_berm_2043': '0fabc4156f52466196fa9151e994be54',
-            'content_crypt_5612': '98935da09de2486ba0c4d347c7018a8a',
-            'plum_valley_5854': '15e3bd4a521b42a28d966b3c63b3ae05',
-            'advanced_monkey_7523': 'd1f6739d52494a4e9dae44bdd5ce34b8',
-            'administrative_dragon_6353': 'ba409b916fcf498fa839388f11061cfe',
-            'tomato_rice_8561': 'b4a5a3f6219b402389bcf4bee1b1e779',
-            'symbolic_goldfish_6434': '340e030eebed42e18cd22d257ca454b0',
-            'royal_clam_3891': '4c3abf848d0d4c0191c740232844a81e',
-            'concrete_wildebeest_4570': 'aae78467a6bf4d199304ea6597cbe4d9',
-            'specified_salamander_2130': 'b784b437968d4981ac321e7391cca1c6',
-            'exact_primate_8076': '2e3e29c2119c4d5188f93d767958e0dd',
-            'adverse_liability_9915': '5375683d433545a0b64e092cc87697a9',
-            'worrying_planarian_7313': '2e9863603d384df696d42fba65ab7120',
-            'neutral_cellulose_4717': '50dcac07676a42e79d16c3176ae4874a',
-            'ok_cream_571': 'da1c5e255a294ecaa094e70c8ee61d9b',
-            'marked_gooseberry_3866': '7133a633b36f4c6ba08c551f04e65f9c',
-            'living_catshark_225': '81506ab5ce6a463f8d080f96905a2487',
-            'annual_weasel_1913': '9fe74778668c49169ffbd1e13a8832b2',
-            'white_relativity_5855': '8ef2282f72e54ff382f1c4c181b5548a',
-        }
-        trained_cvae_model_id = name_to_id[trained_cvae_model_id]
-        existing_exp = comet_ml.ExistingExperiment(experiment_key=trained_cvae_model_id)
+    existing_exp = comet_ml.ExistingExperiment(experiment_key=trained_cvae_model_id)
     existing_exp.log_metrics({
         'best_accu_train': adversary.best_accu_train,
         'best_accu_valid': adversary.best_accu_valid
