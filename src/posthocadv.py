@@ -26,8 +26,8 @@ class SitePredictorSystem(pl.LightningModule):
         )
         self.weight_decay = weight_decay
 
-        self.accu_train = Accuracy()
-        self.accu_valid = Accuracy()
+        self.accu_train = Accuracy(task='multiclass', num_classes=num_sites)
+        self.accu_valid = Accuracy(task='multiclass', num_classes=num_sites)
 
         self.best_accu_train = 0
         self.best_accu_valid = 0
