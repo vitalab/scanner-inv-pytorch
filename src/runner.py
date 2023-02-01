@@ -16,17 +16,17 @@ parser = argparse.ArgumentParser(description=\
     "runs inv-rep auto-encoder training"
 )
 
-parser.add_argument("data_path", type=Path)
+parser.add_argument("data_path", type=Path, help='Path to Tractoinferno dataset')
 parser.add_argument("--save-path", default='./checkpoints')
-parser.add_argument("--debug", action="store_true")
-parser.add_argument("--cpu", action="store_true")
 parser.add_argument("--epochs", type=int, default=20)
-parser.add_argument("--burnin_eps", type=int, default=1)
-parser.add_argument("--use_adv", choices=['y', 'n'], default='y')
-parser.add_argument("--lw_recon", type=float, default=1.0)
-parser.add_argument("--lw_prior", type=float, default=1.0)
-parser.add_argument("--lw_marg", type=float, default=0.01)
-parser.add_argument("--lw_adv_g", type=float, default=10.0)
+parser.add_argument("--burnin_eps", type=int, default=1, help='Num epochs training only discriminator')
+parser.add_argument("--use_adv", choices=['y', 'n'], default='y', help='Use adversarial training with discriminator')
+parser.add_argument("--lw_recon", type=float, default=1.0, help='Loss weight : reconstruction')
+parser.add_argument("--lw_prior", type=float, default=1.0, help='Loss weight : prior')
+parser.add_argument("--lw_marg", type=float, default=0.01, help='Loss weight : marginal')
+parser.add_argument("--lw_adv_g", type=float, default=10.0, help='Loss weight : adversarial generator')
+parser.add_argument("--debug", action="store_true", help='Use less data and only one SH coefficient')
+parser.add_argument("--cpu", action="store_true")
 
 args = parser.parse_args()
 
